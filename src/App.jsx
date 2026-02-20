@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import Sidebar from './components/Sidebar';
-import MapComponent from './components/MapComponent';
-import { getSafeRoute } from './utils/routeLogic';
-import IncidentDetail from './components/IncidentDetail';
+import Sidebar from './features/map/components/Sidebar';
+import MapComponent from './features/map/components/MapComponent';
+import { getSafeRoute } from './features/map/utils/routeLogic';
+import IncidentDetail from './features/map/components/IncidentDetail';
 
 function App() {
   const [incidents, setIncidents] = useState([]);
