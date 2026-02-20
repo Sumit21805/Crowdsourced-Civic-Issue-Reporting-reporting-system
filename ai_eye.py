@@ -1,0 +1,52 @@
+import requests
+import random
+import time
+from datetime import datetime
+
+# Configuration
+BACKEND_URL = "http://localhost:5000/api/report"
+CITY_BOUNDS = {
+    "lat_min": 28.55,
+    "lat_max": 28.65,
+    "lng_min": 77.15,
+    "lng_max": 77.25
+}
+
+ISSUE_TYPES = ["pothole", "garbage", "light"]
+SEVERITIES = ["Low", "Medium", "High"]
+
+def simulate_detection():
+    issue_type = random.choice(ISSUE_TYPES)
+    lat = random.uniform(CITY_BOUNDS["lat_min"], CITY_BOUNDS["lat_max"])
+    lng = random.uniform(CITY_BOUNDS["lng_min"], CITY_BOUNDS["lng_max"])
+    severity = random.choice(SEVERITIES)
+
+    payload = {
+        "type": issue_type,
+        "lat": lat,
+        "lng": lng,
+        "severity": severity
+    }
+
+    try:
+        response = requests.post(BACKEND_URL, json=payload, timeout=5)
+        if response.status_code == 201:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] AI DETECTED: {issue_type.upper()} at {lat:.5f}, {lng:.5f} ({severity})")
+        else:
+            print(f"Error reporting detection: {response.status_code} - {response.text}")
+    except Exception as e:
+        print(f"Failed to connect to backend: {e}")
+
+if __name__ == "__main__":
+    print("--- civicGuard AI Simulation Started ---")
+    print(f"Targeting: {BACKEND_URL}")
+    print("Generating simulated detections every 3-7 seconds...")
+    print("Press Ctrl+C to stop.\n")
+    
+    try:
+        while True:
+            simulate_detection()
+            # Wait for next detection
+            time.sleep(random.randint(3, 7))
+    except KeyboardInterrupt:
+        print("\nSimulation stopped by user.")

@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+/* Custom Map Styles */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  background: #0f172a;
+  /* Slate 900 to match theme */
+}
+
+/* Fix for custom icons to remove default leaflet square background if any */
+.custom-leaflet-icon {
+  background: transparent;
+  border: none;
+}
