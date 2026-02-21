@@ -1,0 +1,220 @@
+pip install fastapi uvicorn sqlalchemy
+from fastapi import FastAPI, Depends
+from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, ForeignKey, DateTime
+from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from sqlalchemy.sql import func
+from datetime import datetime
+from collections import defaultdict
+
+# ---------------- DATABASE SETUP ----------------
+
+DATABASE_URL = "sqlite:///./civic.db"
+
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(bind=engine)
+Base = declarative_base()
+
+app = FastAPI()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# ---------------- MODELS ----------------
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    email = Column(String, unique=True)
+    points = Column(Integer, default=0)
+    trust_score = Column(Float, default=1.0)
+    reports_count = Column(Integer, default=0)
+    spam_count = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class Report(Base):
+    __tablename__ = "reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    category = Column(String)
+    status = Column(String, default="Pending")
+    is_spam = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PointsHistory(Base):
+    __tablename__ = "points_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    action = Column(String)
+    points_change = Column(Integer)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+Base.metadata.create_all(bind=engine)
+
+# ---------------- RANKING LOGIC ----------------
+
+def calculate_points(user, action):
+    points_map = {
+        "valid_report": 10,
+        "verified": 20,
+        "spam": -15
+    }
+
+    change = points_map.get(action, 0)
+
+    # Trust multiplier
+    final_change = int(change * user.trust_score)
+
+    user.points += final_change
+
+    if action == "valid_report":
+        user.reports_count += 1
+
+    if action == "spam":
+        user.spam_count += 1
+        user.trust_score = max(0.5, user.trust_score - 0.1)
+
+    return final_change
+
+
+def get_rank(points):
+    if points >= 1500:
+        return "Urban Champion"
+    elif points >= 500:
+        return "City Guardian"
+    elif points >= 100:
+        return "Active Citizen"
+    else:
+        return "Civic Starter"
+
+# ---------------- API ENDPOINTS ----------------
+
+@app.post("/create_user/")
+def create_user(name: str, email: str, db: Session = Depends(get_db)):
+    user = User(name=name, email=email)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@app.post("/report/")
+def create_report(user_id: int, category: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        return {"error": "User not found"}
+
+    report = Report(user_id=user_id, category=category)
+    db.add(report)
+
+    points_change = calculate_points(user, "valid_report")
+
+    history = PointsHistory(
+        user_id=user_id,
+        action="valid_report",
+        points_change=points_change
+    )
+
+    db.add(history)
+    db.commit()
+
+    return {"message": "Report submitted", "points_added": points_change}
+
+
+@app.post("/verify_report/")
+def verify_report(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        return {"error": "User not found"}
+
+    points_change = calculate_points(user, "verified")
+
+    history = PointsHistory(
+        user_id=user_id,
+        action="verified",
+        points_change=points_change
+    )
+
+    db.add(history)
+    db.commit()
+
+    return {"message": "Report verified", "points_added": points_change}
+
+
+@app.post("/mark_spam/")
+def mark_spam(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        return {"error": "User not found"}
+
+    points_change = calculate_points(user, "spam")
+
+    history = PointsHistory(
+        user_id=user_id,
+        action="spam",
+        points_change=points_change
+    )
+
+    db.add(history)
+    db.commit()
+
+    return {"message": "Marked as spam", "points_deducted": points_change}
+
+
+# -------- GLOBAL LEADERBOARD --------
+
+@app.get("/leaderboard/")
+def leaderboard(db: Session = Depends(get_db)):
+    users = db.query(User).order_by(User.points.desc()).limit(10).all()
+
+    return [
+        {
+            "name": user.name,
+            "points": user.points,
+            "rank": get_rank(user.points)
+        }
+        for user in users
+    ]
+
+
+# -------- MONTHLY LEADERBOARD --------
+
+@app.get("/monthly_leaderboard/")
+def monthly_leaderboard(db: Session = Depends(get_db)):
+
+    now = datetime.now()
+    current_month = now.month
+    current_year = now.year
+
+    monthly_points = defaultdict(int)
+
+    history = db.query(PointsHistory).all()
+
+    for record in history:
+        if record.created_at.month == current_month and record.created_at.year == current_year:
+            monthly_points[record.user_id] += record.points_change
+
+    sorted_users = sorted(monthly_points.items(), key=lambda x: x[1], reverse=True)
+
+    result = []
+
+    for user_id, points in sorted_users[:10]:
+        user = db.query(User).filter(User.id == user_id).first()
+        result.append({
+            "name": user.name,
+            "monthly_points": points
+        })
+
+    return result
