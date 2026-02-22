@@ -3,8 +3,10 @@ import Sidebar from './features/map/components/Sidebar';
 import MapComponent from './features/map/components/MapComponent';
 import { getSafeRoute } from './features/map/utils/routeLogic';
 import IncidentDetail from './features/map/components/IncidentDetail';
+import Welcome from './features/map/components/Welcome';
 
 function App() {
+  const [user, setUser] = useState(localStorage.getItem('cg_user') || '');
   const [incidents, setIncidents] = useState([]);
   const [routes, setRoutes] = useState([]);
   const [isRouting, setIsRouting] = useState(false);
@@ -20,21 +22,35 @@ function App() {
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [reportCoords, setReportCoords] = useState({ lat: null, lng: null });
+  const [mapCenter, setMapCenter] = useState([28.6139, 77.2090]);
 
-  // Fetch incidents from backend
-  useEffect(() => {
-    const fetchIncidents = async () => {
-      try {
-        const response = await fetch('http://192.168.1.7:5000/api/incidents');
-        const data = await response.json();
-        setIncidents(data);
-      } catch (error) {
-        console.error("Failed to fetch incidents:", error);
+  const fetchIncidents = async (autoSelectId = null) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/incidents');
+      const data = await response.json();
+      setIncidents(data);
+
+      if (autoSelectId) {
+        const newIncident = data.find(i => i.id === autoSelectId);
+        if (newIncident) {
+          setSelectedIncident(newIncident);
+        }
       }
-    };
-    fetchIncidents();
-    // REMOVED: Auto-refresh interval that was causing "popping" pins
-  }, []);
+    } catch (error) {
+      console.error("Failed to fetch incidents:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchIncidents();
+    }
+  }, [user]);
+
+  const handleJoin = (name) => {
+    setUser(name);
+    localStorage.setItem('cg_user', name);
+  };
 
   const handleMapClick = (latlng) => {
     if (!pickingMode) setSelectedIncident(null);
@@ -81,10 +97,9 @@ function App() {
   };
 
   // Phase 6: Route-Based Pin Filtering
-  // If routes exist AND smartFilter is on, only show incidents near those routes. Otherwise show all.
   const filteredIncidents = (routes && routes.length > 0 && smartFilter)
     ? incidents.filter(incident => {
-      const threshold = 0.004; // Increased from 0.001 to approx 400m to show "nearby" hazards
+      const threshold = 0.004;
       return routes.some(route =>
         route.points.some(p => {
           const dLat = Math.abs(p[0] - incident.lat);
@@ -94,6 +109,10 @@ function App() {
       );
     })
     : incidents;
+
+  if (!user) {
+    return <Welcome onJoin={handleJoin} />;
+  }
 
   return (
     <div className="flex h-screen w-screen bg-slate-900 overflow-hidden relative">
@@ -110,8 +129,12 @@ function App() {
         setEnd={setEnd}
         reportLat={reportCoords.lat}
         reportLng={reportCoords.lng}
-        incidentCount={incidents.length}
+        incidents={incidents}
         healthScore={Math.max(0, 100 - incidents.length * 2)}
+        onSelectIncident={setSelectedIncident}
+        onReportSubmitted={fetchIncidents}
+        setReportCoords={setReportCoords}
+        userName={user}
       />
 
       <div className="flex-1 relative">
@@ -121,6 +144,7 @@ function App() {
           onMapClick={handleMapClick}
           onMarkerClick={handleMarkerClick}
           selectedId={selectedIncident?.id}
+          center={selectedIncident ? [selectedIncident.lat, selectedIncident.lng] : mapCenter}
           startCoord={start ? start.split(',').map(s => parseFloat(s.trim())) : null}
           endCoord={end ? end.split(',').map(s => parseFloat(s.trim())) : null}
           reportCoord={reportCoords.lat ? [reportCoords.lat, reportCoords.lng] : null}
@@ -129,16 +153,23 @@ function App() {
         <IncidentDetail
           incident={selectedIncident}
           onClose={() => setSelectedIncident(null)}
+          onActionComplete={fetchIncidents}
         />
 
         {/* Floating status & Controls */}
         <div className="absolute top-4 right-4 z-[1000] flex flex-col items-end gap-2">
           <div className="bg-slate-800/90 backdrop-blur p-2 px-4 rounded-full border border-slate-700 text-white text-sm shadow-xl flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-            System Online
+            Neural System Online
           </div>
 
-          {/* Toggle Switch - Only show if a route is active */}
+          <button
+            onClick={() => { localStorage.removeItem('cg_user'); window.location.reload(); }}
+            className="bg-slate-800/90 backdrop-blur p-2 px-4 rounded-full border border-slate-700 text-slate-400 text-[10px] uppercase font-bold hover:text-white transition-all shadow-xl"
+          >
+            Logout
+          </button>
+
           {routes.length > 0 && (
             <div className="bg-slate-800/90 backdrop-blur p-2 px-4 rounded-lg border border-slate-700 shadow-xl flex items-center gap-3">
               <span className="text-xs text-slate-300 font-medium">Smart Journey View</span>

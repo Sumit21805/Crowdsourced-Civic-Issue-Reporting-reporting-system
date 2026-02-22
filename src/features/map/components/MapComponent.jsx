@@ -1,4 +1,5 @@
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, Tooltip } from 'react-leaflet';
+import { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, Tooltip, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { divIcon } from 'leaflet';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -11,7 +12,7 @@ const DEFAULT_ZOOM = 13;
 const createCustomIcon = (icon, isSelected) => {
     const iconMarkup = renderToStaticMarkup(icon);
     return divIcon({
-        html: `<div class="p-1 rounded-full shadow-lg border-2 transition-all duration-300 ${isSelected ? 'bg-white scale-125 border-blue-500 z-[1000]' : 'bg-white border-slate-200'}">${iconMarkup}</div>`,
+        html: `<div class="p-1 rounded-full shadow-lg border-2 transition-all duration-300 ${isSelected ? 'bg-white scale-125 border-blue-500 z-[1000] neural-pulse' : 'bg-white border-slate-200'}">${iconMarkup}</div>`,
         className: 'custom-leaflet-icon',
         iconSize: [isSelected ? 40 : 32, isSelected ? 40 : 32],
         iconAnchor: [isSelected ? 20 : 16, isSelected ? 40 : 32],
@@ -27,7 +28,17 @@ const MapEvents = ({ onMapClick }) => {
     return null;
 };
 
-const MapComponent = ({ routes = [], markers = [], onMapClick, onMarkerClick, selectedId, startCoord, endCoord, reportCoord }) => {
+const RecenterMap = ({ center }) => {
+    const map = useMap();
+    useEffect(() => {
+        if (center && center[0] && center[1]) {
+            map.flyTo(center, 14, { animate: true, duration: 1.5 });
+        }
+    }, [center, map]);
+    return null;
+};
+
+const MapComponent = ({ routes = [], markers = [], onMapClick, onMarkerClick, selectedId, startCoord, endCoord, reportCoord, center }) => {
     const getIcon = (type, isSelected) => {
         const iconProps = { size: isSelected ? 24 : 20 };
         switch (type) {
@@ -49,6 +60,7 @@ const MapComponent = ({ routes = [], markers = [], onMapClick, onMarkerClick, se
                 style={{ height: '100%', width: '100%' }}
                 zoomControl={false}
             >
+                <RecenterMap center={center} />
                 <MapEvents onMapClick={onMapClick} />
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -82,7 +94,7 @@ const MapComponent = ({ routes = [], markers = [], onMapClick, onMarkerClick, se
                     </Marker>
                 )}
 
-                {markers.map(marker => (
+                {markers.filter(m => m.lat && m.lng).map(marker => (
                     <Marker
                         key={marker.id}
                         position={[marker.lat, marker.lng]}

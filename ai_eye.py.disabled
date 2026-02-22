@@ -4,6 +4,7 @@ import time
 from datetime import datetime
 
 # Configuration
+# Note: Ensure 'requests' is installed (pip install requests)
 BACKEND_URL = "http://localhost:5000/api/report"
 CITY_BOUNDS = {
     "lat_min": 28.55,
