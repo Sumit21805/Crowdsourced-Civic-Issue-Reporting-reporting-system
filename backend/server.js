@@ -68,7 +68,9 @@ db.serialize(() => {
 // Multer Config
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/');
+        const uploadDir = path.join(__dirname, 'uploads');
+        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+        cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -80,7 +82,16 @@ const upload = multer({ storage: storage });
 
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static('uploads'));
+
+// Log all requests
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
+
+const uploadPath = path.join(__dirname, 'uploads');
+console.log('Serving uploads from:', uploadPath);
+app.use('/uploads', express.static(uploadPath));
 
 // =================== API ROUTES ===================
 
@@ -219,7 +230,16 @@ app.post('/api/report', upload.single('image'), (req, res) => {
         let status = 'Active';
         let auditReason = '';
 
-        // Random Delhi Coords
+        // ⭐ Priority 1: Live GPS from browser (camera mode) — most accurate
+        const clientLat = parseFloat(req.body.lat);
+        const clientLng = parseFloat(req.body.lng);
+        if (!isNaN(clientLat) && !isNaN(clientLng)) {
+            finalLat = clientLat;
+            finalLng = clientLng;
+            console.log(`📍 Using live browser GPS: ${finalLat}, ${finalLng}`);
+        }
+
+        // Priority 2: Random Delhi Coords fallback (only if no GPS at all)
         if (!finalLat && isAutoLoc && bestDetection) {
             finalLat = 28.5 + (Math.random() * 0.1);
             finalLng = 77.1 + (Math.random() * 0.1);

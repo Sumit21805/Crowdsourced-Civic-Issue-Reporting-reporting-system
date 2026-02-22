@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, MapPin, AlertTriangle, ExternalLink, Cpu, Timer, Trash2, Send, Building2, CheckCircle2, Loader2 } from 'lucide-react';
+import API_BASE from '../../../config';
 
 const IncidentDetail = ({ incident, onClose, onActionComplete }) => {
     const [departments, setDepartments] = useState([]);
@@ -7,7 +8,7 @@ const IncidentDetail = ({ incident, onClose, onActionComplete }) => {
     const [assigning, setAssigning] = useState(false);
 
     useEffect(() => {
-        fetch('http://localhost:5000/api/departments')
+        fetch(`${API_BASE}/api/departments`)
             .then(r => r.json())
             .then(setDepartments)
             .catch(console.error);
@@ -16,7 +17,7 @@ const IncidentDetail = ({ incident, onClose, onActionComplete }) => {
     if (!incident) return null;
 
     const getImagePath = (inc) => {
-        if (inc.image_path) return `http://localhost:5000${inc.image_path}`;
+        if (inc.image_path) return `${API_BASE}${inc.image_path}`;
         if (inc.type === 'pothole') return '/pothole.jpg';
         if (inc.type === 'garbage') return '/garbage.jpg';
         return '/pothole.jpg';
@@ -26,7 +27,7 @@ const IncidentDetail = ({ incident, onClose, onActionComplete }) => {
         if (!selectedDept) { alert("Select a department first!"); return; }
         setAssigning(true);
         try {
-            const response = await fetch(`http://localhost:5000/api/incidents/${incident.id}/assign`, {
+            const response = await fetch(`${API_BASE}/api/incidents/${incident.id}/assign`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ department: selectedDept })
@@ -46,7 +47,7 @@ const IncidentDetail = ({ incident, onClose, onActionComplete }) => {
     const handleDelete = async () => {
         if (!window.confirm("Delete this entry from database?")) return;
         try {
-            const response = await fetch(`http://localhost:5000/api/incidents/${incident.id}`, {
+            const response = await fetch(`${API_BASE}/api/incidents/${incident.id}`, {
                 method: 'DELETE'
             });
             if (response.ok) {

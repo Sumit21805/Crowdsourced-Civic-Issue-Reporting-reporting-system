@@ -24,3 +24,9 @@ backend/package-lock.json
 *.njsproj
 *.sln
 *.sw?
+
+# Project specific
+backend/civicsense.db
+backend/uploads/
+server.log
+

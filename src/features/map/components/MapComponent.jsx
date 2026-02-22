@@ -130,27 +130,35 @@ const MapComponent = ({ routes = [], markers = [], onMapClick, onMarkerClick, se
                 ))}
             </MapContainer>
 
-            {/* Legend Overlay */}
-            <div className="absolute bottom-6 right-6 z-[1000] bg-slate-900/90 backdrop-blur p-4 rounded-lg border border-slate-700 shadow-xl text-white text-xs min-w-[150px]">
+            {/* Legend — desktop: bottom-right expanded. mobile: top-right mini pill */}
+            <div className="hidden md:block absolute bottom-6 right-6 z-[1000] bg-slate-900/90 backdrop-blur p-4 rounded-lg border border-slate-700 shadow-xl text-white text-xs min-w-[150px]">
                 <h4 className="font-bold mb-3 uppercase tracking-tighter text-slate-400">Legend</h4>
                 <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                        <AlertTriangle size={14} className="text-red-400" />
-                        <span>Potholes</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Trash2 size={14} className="text-yellow-400" />
-                        <span>Garbage</span>
-                    </div>
+                    <div className="flex items-center gap-2"><AlertTriangle size={14} className="text-red-400" /><span>Potholes</span></div>
+                    <div className="flex items-center gap-2"><Trash2 size={14} className="text-yellow-400" /><span>Garbage</span></div>
                     <hr className="border-slate-700 my-2" />
-                    <div className="flex items-center gap-2">
-                        <div className="w-4 h-1 bg-green-500 rounded"></div>
-                        <span>Safest Route</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-4 h-1 border-t-2 border-dashed border-blue-500"></div>
-                        <span>Fastest Route</span>
-                    </div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-1 bg-green-500 rounded"></div><span>Safest Route</span></div>
+                    <div className="flex items-center gap-2"><div className="w-4 h-1 border-t-2 border-dashed border-blue-500"></div><span>Fastest Route</span></div>
+                </div>
+            </div>
+
+            {/* Mobile Legend — compact pills at top-right, below status bar */}
+            <div className="md:hidden absolute top-28 right-3 z-[1000] flex flex-col gap-1">
+                <div className="bg-slate-900/80 backdrop-blur px-2 py-1 rounded-full border border-slate-700/50 flex items-center gap-1.5">
+                    <AlertTriangle size={10} className="text-red-400" />
+                    <span className="text-white text-[9px] font-bold">Pothole</span>
+                </div>
+                <div className="bg-slate-900/80 backdrop-blur px-2 py-1 rounded-full border border-slate-700/50 flex items-center gap-1.5">
+                    <Trash2 size={10} className="text-yellow-400" />
+                    <span className="text-white text-[9px] font-bold">Garbage</span>
+                </div>
+                <div className="bg-slate-900/80 backdrop-blur px-2 py-1 rounded-full border border-slate-700/50 flex items-center gap-1.5">
+                    <div className="w-3 h-0.5 bg-green-500 rounded"></div>
+                    <span className="text-white text-[9px] font-bold">Safe</span>
+                </div>
+                <div className="bg-slate-900/80 backdrop-blur px-2 py-1 rounded-full border border-slate-700/50 flex items-center gap-1.5">
+                    <div className="w-3 border-t border-dashed border-blue-500"></div>
+                    <span className="text-white text-[9px] font-bold">Fast</span>
                 </div>
             </div>
         </div>

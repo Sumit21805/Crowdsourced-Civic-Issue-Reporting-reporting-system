@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MapPin, Navigation, Settings, Loader2, ChevronLeft, ChevronRight, Layout, AlertCircle, Bell, Activity, Trophy, Crown, Medal } from 'lucide-react';
+import API_BASE from '../../../config';
 
 const Sidebar = ({ onFindRoute, onClearRoute, isRouting, hasRoute, pickingMode, setPickingMode, start, setStart, end, setEnd, reportLat, reportLng, incidents = [], healthScore, onSelectIncident, onReportSubmitted, setReportCoords, userName }) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -11,7 +12,7 @@ const Sidebar = ({ onFindRoute, onClearRoute, isRouting, hasRoute, pickingMode, 
 
     const fetchLeaderboard = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/leaderboard');
+            const res = await fetch(`${API_BASE}/api/leaderboard`);
             const data = await res.json();
             setLeaderboard(data);
         } catch (err) {
@@ -182,7 +183,7 @@ const Sidebar = ({ onFindRoute, onClearRoute, isRouting, hasRoute, pickingMode, 
                                             className="bg-slate-900/80 p-3 rounded-xl border border-slate-700/50 hover:border-orange-500/50 transition-all cursor-pointer flex items-center gap-3 group border-l-4 border-l-orange-500"
                                         >
                                             <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-orange-500 overflow-hidden ring-1 ring-white/10">
-                                                {inc.image_path ? <img src={`http://localhost:5000${inc.image_path}`} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" /> : <AlertCircle size={16} />}
+                                                {inc.image_path ? <img src={`${API_BASE}${inc.image_path}`} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" /> : <AlertCircle size={16} />}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex justify-between items-center mb-1">
@@ -232,7 +233,7 @@ const Sidebar = ({ onFindRoute, onClearRoute, isRouting, hasRoute, pickingMode, 
                                     formData.append('image', imageFile);
 
                                     try {
-                                        const response = await fetch('http://localhost:5000/api/report', {
+                                        const response = await fetch(`${API_BASE}/api/report`, {
                                             method: 'POST',
                                             body: formData,
                                         });
