@@ -1,152 +1,160 @@
 import polyline from '@mapbox/polyline';
 
 /**
- * Fetches routes from OSRM and calculates a 'Danger Score'
- * @param {Array} start - [lat, lng]
- * @param {Array} end - [lat, lng]
- * @param {Array} markers - Current potholes/hazards
+ * Rigorous Haversine Distance Calculation (km)
  */
+const getDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+};
+
+/**
+ * Interpolates points in a geometry to ensure we don't 'jump' over hazards
+ */
+const interpolatePoints = (points) => {
+    const interpolated = [];
+    for (let i = 0; i < points.length - 1; i++) {
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        interpolated.push(p1);
+        const dist = getDistance(p1[0], p1[1], p2[0], p2[1]);
+        if (dist > 0.05) { // Segment > 50m
+            const steps = Math.min(Math.floor(dist / 0.05), 50); // Cap interpolation to prevent memory boom
+            for (let s = 1; s < steps; s++) {
+                interpolated.push([
+                    p1[0] + (p2[0] - p1[0]) * (s / steps),
+                    p1[1] + (p2[1] - p1[1]) * (s / steps)
+                ]);
+            }
+        }
+    }
+    interpolated.push(points[points.length - 1]);
+    return interpolated;
+};
+
+/**
+ * Evaluates route safety based on 500m danger zones and proximity maximization
+ */
+const evaluateSafety = (geometry, markers) => {
+    const rawPoints = polyline.decode(geometry);
+    const points = interpolatePoints(rawPoints);
+    let totalPenalty = 0;
+    let pointsInZone = 0;
+    let hitMarkerIds = new Set();
+
+    points.forEach(p => {
+        let nearestDist = Infinity;
+        let nearestMarker = null;
+
+        markers.forEach(m => {
+            const d = getDistance(p[0], p[1], m.lat, m.lng);
+            if (d < nearestDist) {
+                nearestDist = d;
+                nearestMarker = m;
+            }
+        });
+
+        if (nearestDist < 0.51) { // 500m Radius Zone (plus tiny buffer)
+            pointsInZone++;
+            if (nearestMarker) hitMarkerIds.add(nearestMarker.id);
+            // MASSIVE PENALTY: 100M base for any entry + exponential proximity cost
+            totalPenalty += 100000000 + (Math.pow(0.5 - nearestDist, 2) * 5000000);
+        } else {
+            // Buffer Priority: Heavily penalize closeness up to 1.5km to find the furthest road
+            totalPenalty += Math.pow(Math.max(0, 1.5 - nearestDist), 2) * 50000;
+        }
+    });
+
+    return {
+        points: rawPoints,
+        penalty: totalPenalty,
+        isDirty: pointsInZone > 0,
+        dangerCount: hitMarkerIds.size
+    };
+};
+
 export const getSafeRoute = async (start, end, markers) => {
     const startStr = `${start[1]},${start[0]}`;
     const endStr = `${end[1]},${end[0]}`;
-
-    // Only consider markers with valid coordinates
     const validMarkers = markers.filter(m => m.lat && m.lng);
 
-    // Only exclude hazards right at the start/end intersection (you can't avoid your own location)
-    const intersectionRadius = 0.001; // ~100m — just the immediate intersection
-    const routeHazards = validMarkers.filter(m => {
-        const atStart = Math.abs(m.lat - start[0]) < intersectionRadius &&
-            Math.abs(m.lng - start[1]) < intersectionRadius;
-        const atEnd = Math.abs(m.lat - end[0]) < intersectionRadius &&
-            Math.abs(m.lng - end[1]) < intersectionRadius;
-        return !atStart && !atEnd; // Exclude ONLY hazards right at your pin
-    });
-
-    // Helper to calculate danger score for a geometry
-    const calculateDanger = (geometry) => {
-        const points = polyline.decode(geometry);
-        let dangerPoints = 0;
-        const threshold = 0.002; // ~200 meters — avoid route if hazard within 200m
-
-        routeHazards.forEach(marker => {
-            const isNear = points.some(p =>
-                Math.abs(p[0] - marker.lat) < threshold &&
-                Math.abs(p[1] - marker.lng) < threshold
-            );
-            if (isNear) dangerPoints++;
-        });
-        return { points, score: dangerPoints };
-    };
-
-    // Try a detour route via a waypoint
-    const tryDetour = async (waypointLat, waypointLng) => {
-        const wpStr = `${waypointLng},${waypointLat}`;
-        const url = `https://router.project-osrm.org/route/v1/driving/${startStr};${wpStr};${endStr}?overview=full&geometries=polyline`;
+    const fetchOSRM = async (wpQuery) => {
         try {
-            const res = await fetch(url);
+            const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${wpQuery}?overview=full&alternatives=true&geometries=polyline`);
             const d = await res.json();
-            if (d.code === 'Ok') {
-                const route = d.routes[0];
-                const { points, score } = calculateDanger(route.geometry);
-                return {
-                    points,
-                    distance: route.distance,
-                    duration: route.duration,
-                    dangerScore: score,
-                    type: 'Safe Detour',
-                    isRecommended: false
-                };
-            }
-        } catch (e) { /* ignore failed detour */ }
-        return null;
+            return d.code === 'Ok' ? d.routes : [];
+        } catch (e) { return []; }
     };
 
     try {
-        // 1. Get initial routes (up to 3 alternatives)
-        const primaryUrl = `https://router.project-osrm.org/route/v1/driving/${startStr};${endStr}?overview=full&alternatives=true&geometries=polyline`;
-        const response = await fetch(primaryUrl);
-        const data = await response.json();
-        if (data.code !== 'Ok') throw new Error('Routing failed');
+        let candidates = [];
 
-        let allRoutes = data.routes.map((r, i) => {
-            const { points, score } = calculateDanger(r.geometry);
-            return {
-                points,
-                distance: r.distance,
-                duration: r.duration,
-                dangerScore: score,
-                type: i === 0 ? 'Fastest' : 'Alternative',
-                isRecommended: false
-            };
+        // 1. Core Discovery (Direct & OSRM Alternatives)
+        const directRes = await fetchOSRM(`${startStr};${endStr}`);
+        directRes.forEach(r => {
+            candidates.push({ ...r, ...evaluateSafety(r.geometry, validMarkers), source: 'Direct' });
         });
 
-        // 2. Intelligence: If the fastest route has mid-route hazards, try detours
-        const fastest = allRoutes[0];
-        if (fastest.dangerScore > 0) {
-            // Find which hazards are near the route
-            const threshold = 0.003;
-            const nearbyHazards = routeHazards.filter(marker =>
-                fastest.points.some(p =>
-                    Math.abs(p[0] - marker.lat) < threshold &&
-                    Math.abs(p[1] - marker.lng) < threshold
-                )
+        // 2. Wide-Area Arterial Discovery (Searching for parallel roads like the ones you circled)
+        const midLat = (start[0] + end[0]) / 2;
+        const midLng = (start[1] + end[1]) / 2;
+
+        // Try waypoints 2.5km to the sides to 'discover' major parallel arteries
+        const offsets = [[0.02, 0.02], [-0.02, -0.02], [0.02, -0.02], [-0.02, 0.02]];
+        const discoveryPromises = offsets.map(off =>
+            fetchOSRM(`${startStr};${midLng + off[1]},${midLat + off[0]};${endStr}`)
+        );
+        const discoveryResults = await Promise.all(discoveryPromises);
+        discoveryResults.flat().forEach(r => {
+            candidates.push({ ...r, ...evaluateSafety(r.geometry, validMarkers), source: 'Discovery' });
+        });
+
+        // 3. Multi-Hazard Detours (Surgical bypass of detected threats)
+        let currentBest = [...candidates].sort((a, b) => a.penalty - b.penalty)[0];
+        if (currentBest && currentBest.isDirty) {
+            const hitHazards = validMarkers.filter(m =>
+                interpolatePoints(polyline.decode(currentBest.geometry)).some(p => getDistance(p[0], p[1], m.lat, m.lng) < 0.5)
             );
 
-            const detourShifts = [
-                { dlat: 0.012, dlng: 0 },
-                { dlat: -0.012, dlng: 0 },
-                { dlat: 0, dlng: 0.012 },
-                { dlat: 0, dlng: -0.012 },
-            ];
-
             const detourPromises = [];
-
-            // Detours away from each hazard
-            for (const hazard of nearbyHazards) {
-                for (const shift of detourShifts) {
-                    detourPromises.push(tryDetour(hazard.lat + shift.dlat, hazard.lng + shift.dlng));
-                }
-            }
-
-            // Midpoint detours
-            const midIndex = Math.floor(fastest.points.length / 2);
-            const midPoint = fastest.points[midIndex];
-            for (const shift of detourShifts) {
-                detourPromises.push(tryDetour(midPoint[0] + shift.dlat, midPoint[1] + shift.dlng));
-            }
-
-            const detourResults = await Promise.all(detourPromises);
-            detourResults.forEach(route => {
-                if (route) allRoutes.push(route);
+            hitHazards.slice(0, 3).forEach(target => {
+                const bOffsets = [[0.015, 0.015], [-0.015, -0.015], [0.015, -0.015], [-0.015, 0.015]];
+                bOffsets.forEach(off => {
+                    detourPromises.push(fetchOSRM(`${startStr};${target.lng + off[1]},${target.lat + off[0]};${endStr}`));
+                });
+            });
+            const dResults = await Promise.all(detourPromises);
+            dResults.flat().forEach(r => {
+                candidates.push({ ...r, ...evaluateSafety(r.geometry, validMarkers), source: 'Detour' });
             });
         }
 
-        // 3. Final Selection: Sort by Safety FIRST, then fastest time
-        const sorted = [...allRoutes].sort((a, b) => {
-            if (a.dangerScore !== b.dangerScore) return a.dangerScore - b.dangerScore;
+        // ── FINAL SELECTION ──
+        // FASTEST: ignores all hazard logic
+        const fastest = [...candidates].filter(c => c.source === 'Direct').sort((a, b) => a.duration - b.duration)[0] || candidates[0];
+
+        // SAFEST: prioritize absolute minimum penalty
+        const safest = [...candidates].sort((a, b) => {
+            if (a.penalty !== b.penalty) return a.penalty - b.penalty;
             return a.duration - b.duration;
+        })[0];
+
+        const format = (r, type, isRec) => ({
+            points: r.points, distance: r.distance, duration: r.duration,
+            dangerScore: r.dangerCount, type, isRecommended: isRec
         });
 
-        // If all routes have the same danger score, only show the fastest
-        const allSameDanger = sorted.every(r => r.dangerScore === sorted[0].dangerScore);
-        if (allSameDanger) {
-            sorted[0].isRecommended = true;
-            sorted[0].type = 'Safest & Fastest';
-            return [sorted[0]];
+        if (safest === fastest || (safest.penalty === fastest.penalty && safest.duration === fastest.duration)) {
+            return [format(safest, 'Safest & Fastest', true)];
         }
 
-        // Otherwise, show safest (recommended) + fastest only (exactly 2 routes max)
-        sorted[0].isRecommended = true;
-        sorted[0].type = 'Safest';
-        const quickest = [...allRoutes].sort((a, b) => a.duration - b.duration)[0];
-        if (quickest !== sorted[0]) {
-            quickest.type = 'Fastest';
-            return [sorted[0], quickest]; // Exactly 2: safest + fastest
-        }
-        return [sorted[0]]; // They're the same route
-    } catch (error) {
-        console.error("Routing Error:", error);
-        return null;
-    }
+        return [format(safest, 'Safest', true), format(fastest, 'Fastest', false)];
+
+    } catch (e) { console.error(e); return null; }
 };
