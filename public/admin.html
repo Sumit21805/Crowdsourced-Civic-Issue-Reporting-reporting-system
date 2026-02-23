@@ -949,7 +949,7 @@
                     <td><span class="confidence">${r.confidence ? (r.confidence * 100).toFixed(1) + '%' : '—'}</span></td>
                     <td><span class="coords">${r.lat ? r.lat.toFixed(4) + ', ' + r.lng.toFixed(4) : '—'}</span></td>
                     <td><div class="reporter"><span class="avatar">${(r.user_name || '?')[0].toUpperCase()}</span>${r.user_name || '?'}</div></td>
-                    <td>${dept ? `${dept.icon} <span style="font-size:10px;font-weight:700">${dept.name}</span>` : deptSelect(r.id)}</td>
+                    <td>${dept ? `${dept.icon} <span style="font-size:10px;font-weight:700">${dept.name}</span>` : (r.lat && r.lng ? deptSelect(r.id) : '<span style="color:#64748b;font-size:10px;">No GPS Data</span>')}</td>
                     <td><span class="badge-status badge-${statusClass}">${r.status}</span></td>
                     <td style="font-size:10px;color:#475569;">${r.reported_at || ''}</td>
                     <td><div class="actions">${getActions(r)}</div></td>
@@ -966,9 +966,6 @@
 
         function getActions(r) {
             let btns = '';
-            if (r.status === 'Active' || r.status === 'Audit') {
-                btns += `<button class="act-btn assign" onclick="assignDeptPrompt(${r.id})">Assign</button>`;
-            }
             if (r.status === 'Assigned') {
                 btns += `<button class="act-btn resolve" onclick="openResolve(${r.id})">Resolve</button>`;
             }
