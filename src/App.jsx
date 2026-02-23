@@ -41,9 +41,12 @@ function App() {
   const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState('');
   const [assigning, setAssigning] = useState(false);
-  const [gpsCoords, setGpsCoords] = useState(null);      // { lat, lng } from browser
+  const [gpsCoords, setGpsCoords] = useState(() => {
+    const saved = localStorage.getItem('cg_last_gps');
+    try { return saved ? JSON.parse(saved) : null; } catch { return null; }
+  });      // { lat, lng } from browser
   const [gpsStatus, setGpsStatus] = useState('idle');    // idle | fetching | ok | error
-  const [isCameraCapture, setIsCameraCapture] = useState(false); // Track if source is camera
+  const [isCameraCapture, setIsCameraCapture] = useState(localStorage.getItem('cg_is_camera') === 'true'); // Track if source is camera
   const [selectedFile, setSelectedFile] = useState(null);
   const cameraRef = useRef(null);
   const galleryRef = useRef(null);
@@ -99,7 +102,7 @@ function App() {
           console.warn("GPS Background Error:", err);
           setGpsStatus(prev => prev === 'fetching' ? 'error' : prev);
         };
-        const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+        const options = { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 };
 
         // Initial fetch
         navigator.geolocation.getCurrentPosition(success, error, options);
@@ -115,6 +118,20 @@ function App() {
       if (gpsWatchRef.current) navigator.geolocation.clearWatch(gpsWatchRef.current);
     };
   }, [user]);
+
+  // Persistent State Neural Sync
+  useEffect(() => {
+    localStorage.setItem('cg_mobile_tab', activeTab);
+    localStorage.setItem('cg_sheet_open', sheetOpen);
+  }, [activeTab, sheetOpen]);
+
+  useEffect(() => {
+    if (gpsCoords) localStorage.setItem('cg_last_gps', JSON.stringify(gpsCoords));
+  }, [gpsCoords]);
+
+  useEffect(() => {
+    localStorage.setItem('cg_is_camera', isCameraCapture);
+  }, [isCameraCapture]);
 
   const handleJoin = (name) => {
     const normalized = name.trim().toUpperCase();
@@ -571,6 +588,23 @@ function App() {
                       <button
                         onClick={() => {
                           setIsCameraCapture(true);
+                          localStorage.setItem('cg_is_camera', 'true');
+
+                          // Boost Neural Location Fix before camera opens
+                          if ("geolocation" in navigator) {
+                            setGpsStatus('fetching');
+                            navigator.geolocation.getCurrentPosition(
+                              (pos) => {
+                                const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                                setGpsCoords(coords);
+                                localStorage.setItem('cg_last_gps', JSON.stringify(coords));
+                                setGpsStatus('ok');
+                              },
+                              () => { /* handled by background timer */ },
+                              { enableHighAccuracy: true, timeout: 3000, maximumAge: 0 }
+                            );
+                          }
+
                           if (!window.isSecureContext && window.location.hostname !== 'localhost') {
                             alert("⚠️ Android Chrome blocks GPS on HTTP.\n\nWORKAROUND:\n1. Open Chrome on phone\n2. Go to chrome://flags/#unsafely-treat-insecure-origin-as-secure\n3. Add http://" + window.location.hostname + ":5176 to the box\n4. Enable and Relaunch.");
                           }

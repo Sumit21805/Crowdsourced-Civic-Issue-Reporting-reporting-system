@@ -4,7 +4,6 @@ import API_BASE from '../../../config';
 
 const Sidebar = ({ onFindRoute, onClearRoute, isRouting, hasRoute, pickingMode, setPickingMode, start, setStart, end, setEnd, reportLat, reportLng, incidents = [], healthScore, onSelectIncident, onReportSubmitted, setReportCoords, userName }) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
-    const [isAutoLoc, setIsAutoLoc] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [timer, setTimer] = useState(0);
     const [tab, setTab] = useState('map');
@@ -204,15 +203,6 @@ const Sidebar = ({ onFindRoute, onClearRoute, isRouting, hasRoute, pickingMode, 
                                     <h2 className="text-xs font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
                                         <Activity size={14} className="text-yellow-500" /> AI Report Sync
                                     </h2>
-                                    <div className="flex flex-col items-end gap-1">
-                                        <span className="text-[8px] text-slate-500 uppercase font-black tracking-tighter">Auto Location</span>
-                                        <button
-                                            onClick={() => setIsAutoLoc(!isAutoLoc)}
-                                            className={`w-8 h-4 rounded-full transition-all relative ${isAutoLoc ? 'bg-blue-600' : 'bg-slate-700'}`}
-                                        >
-                                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${isAutoLoc ? 'right-0.5' : 'left-0.5'}`}></div>
-                                        </button>
-                                    </div>
                                 </div>
 
                                 <form className="space-y-4" onSubmit={async (e) => {
@@ -230,7 +220,7 @@ const Sidebar = ({ onFindRoute, onClearRoute, isRouting, hasRoute, pickingMode, 
 
                                     const formData = new FormData();
                                     formData.append('userName', userName);
-                                    formData.append('autoLocation', isAutoLoc);
+                                    formData.append('autoLocation', 'false');
                                     formData.append('image', imageFile);
 
                                     try {

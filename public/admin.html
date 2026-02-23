@@ -966,11 +966,10 @@
 
         function getActions(r) {
             let btns = '';
-            const hasLocation = r.lat && r.lng;
-            if (hasLocation && (r.status === 'Active' || r.status === 'Audit')) {
+            if (r.status === 'Active' || r.status === 'Audit') {
                 btns += `<button class="act-btn assign" onclick="assignDeptPrompt(${r.id})">Assign</button>`;
             }
-            if (hasLocation && r.status === 'Assigned') {
+            if (r.status === 'Assigned') {
                 btns += `<button class="act-btn resolve" onclick="openResolve(${r.id})">Resolve</button>`;
             }
             btns += `<button class="act-btn delete" onclick="deleteReport(${r.id})">Delete</button>`;

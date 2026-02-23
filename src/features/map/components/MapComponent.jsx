@@ -132,19 +132,7 @@ const MapComponent = ({ routes = [], markers = [], onMapClick, onMarkerClick, se
                 ))}
             </MapContainer>
 
-            {/* Legend — desktop: bottom-right expanded. mobile: top-right mini pill */}
-            {/* Scanning Overlay (only visible when markers are empty) */}
-            {markers.length === 0 && (
-                <div className="absolute inset-0 z-[1001] bg-slate-900/40 backdrop-blur-[2px] pointer-events-none flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="relative">
-                            <div className="w-16 h-16 rounded-full border-2 border-cyan-500/30 animate-ping"></div>
-                            <Activity className="absolute inset-0 m-auto text-cyan-400 animate-pulse" size={32} />
-                        </div>
-                        <div className="text-cyan-400 font-black text-xs uppercase tracking-[0.3em] animate-pulse">Neural Scanning Area...</div>
-                    </div>
-                </div>
-            )}
+
 
             {/* Legend — desktop: bottom-right expanded. mobile: top-right mini pill */}
             <div className="hidden md:block absolute bottom-6 right-6 z-[1000] bg-slate-900/90 backdrop-blur p-4 rounded-lg border border-slate-700 shadow-xl text-white text-xs min-w-[150px]">
