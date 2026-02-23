@@ -43,9 +43,11 @@ function App() {
   const [assigning, setAssigning] = useState(false);
   const [gpsCoords, setGpsCoords] = useState(null);      // { lat, lng } from browser
   const [gpsStatus, setGpsStatus] = useState('idle');    // idle | fetching | ok | error
+  const [isCameraCapture, setIsCameraCapture] = useState(false); // Track if source is camera
   const [selectedFile, setSelectedFile] = useState(null);
   const cameraRef = useRef(null);
   const galleryRef = useRef(null);
+  const gpsWatchRef = useRef(null);
 
   useEffect(() => {
     const handleResize = () => setMobile(isMobileDevice());
@@ -77,7 +79,33 @@ function App() {
       fetchIncidents();
       fetchLeaderboard();
       fetch(`${API_BASE}/api/departments`).then(r => r.json()).then(setDepartments).catch(console.error);
+
+      // Start fetching GPS in background immediately
+      if ("geolocation" in navigator) {
+        setGpsStatus('fetching');
+        const success = (pos) => {
+          setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setGpsStatus('ok');
+        };
+        const error = (err) => {
+          console.warn("GPS Background Error:", err);
+          setGpsStatus(prev => prev === 'fetching' ? 'error' : prev);
+        };
+        const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+
+        // Initial fetch
+        navigator.geolocation.getCurrentPosition(success, error, options);
+
+        // Watch for changes
+        gpsWatchRef.current = navigator.geolocation.watchPosition(success, error, options);
+      } else {
+        setGpsStatus('error');
+      }
     }
+
+    return () => {
+      if (gpsWatchRef.current) navigator.geolocation.clearWatch(gpsWatchRef.current);
+    };
   }, [user]);
 
   const handleJoin = (name) => { setUser(name); localStorage.setItem('cg_user', name); };
@@ -485,10 +513,22 @@ function App() {
                     <MapPin size={16} className="flex-shrink-0" />
                     <div>
                       {gpsStatus === 'ok' && gpsCoords ? `📍 GPS Ready: ${gpsCoords.lat.toFixed(5)}, ${gpsCoords.lng.toFixed(5)}` :
-                        gpsStatus === 'fetching' ? '📡 Getting your location...' :
-                          gpsStatus === 'error' ? '⚠️ GPS failed — location may be inaccurate' :
-                            'Location will be fetched when you use camera'}
+                        gpsStatus === 'fetching' ? '📡 Establishing neural location...' :
+                          gpsStatus === 'error' ? '⚠️ Location access restricted' :
+                            'Location synchronized in background'}
                     </div>
+                    {gpsStatus === 'error' && (
+                      <button
+                        onClick={() => {
+                          setGpsStatus('fetching');
+                          navigator.geolocation.getCurrentPosition(
+                            (pos) => { setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setGpsStatus('ok'); },
+                            () => { setGpsStatus('error'); },
+                            { enableHighAccuracy: true, timeout: 5000 }
+                          );
+                        }}
+                        className="ml-auto bg-white/20 px-2 py-1 rounded text-[9px] uppercase">Retry</button>
+                    )}
                   </div>
 
                   {/* Selected File Preview */}
@@ -511,27 +551,25 @@ function App() {
                   {!selectedFile && (
                     <div className="grid grid-cols-2 gap-3">
 
-                      {/* TAKE PHOTO — opens camera + fetches GPS */}
                       <button
                         onClick={() => {
+                          setIsCameraCapture(true);
                           // Check if Secure Context (modern browsers block GPS on HTTP)
                           if (!window.isSecureContext && window.location.hostname !== 'localhost') {
                             alert("⚠️ Android Chrome blocks GPS on HTTP.\n\nWORKAROUND:\n1. Open Chrome on phone\n2. Go to chrome://flags/#unsafely-treat-insecure-origin-as-secure\n3. Add http://" + window.location.hostname + ":5176 to the box\n4. Enable and Relaunch.");
                           }
 
-                          // Fetch GPS first
-                          setGpsStatus('fetching');
-                          navigator.geolocation.getCurrentPosition(
-                            (pos) => {
-                              setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                              setGpsStatus('ok');
-                            },
-                            (err) => {
-                              setGpsStatus('error');
-                              if (err.code === 1) alert("Location Permission Denied. Tap the GPS banner to try again.");
-                            },
-                            { enableHighAccuracy: true, timeout: 8000 }
-                          );
+                          // We already fetch in background, but a quick refresh doesn't hurt
+                          if (gpsStatus !== 'ok') {
+                            navigator.geolocation.getCurrentPosition(
+                              (pos) => {
+                                setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                                setGpsStatus('ok');
+                              },
+                              null,
+                              { enableHighAccuracy: true, timeout: 3000 }
+                            );
+                          }
                           // Open camera
                           cameraRef.current?.click();
                         }}
@@ -540,12 +578,15 @@ function App() {
                           <Camera size={28} />
                         </div>
                         <span className="text-sm uppercase">Take Photo</span>
-                        <span className="text-[9px] text-blue-500 uppercase">+ Auto GPS</span>
+                        <span className="text-[9px] text-blue-500 uppercase">Use Current GPS</span>
                       </button>
 
                       {/* CHOOSE FROM GALLERY */}
                       <button
-                        onClick={() => galleryRef.current?.click()}
+                        onClick={() => {
+                          setIsCameraCapture(false);
+                          galleryRef.current?.click();
+                        }}
                         className="flex flex-col items-center gap-3 bg-slate-800 border-2 border-slate-600 rounded-2xl py-8 text-slate-400 font-black active:scale-95 transition-transform">
                         <div className="p-4 bg-slate-700 rounded-full">
                           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -577,8 +618,8 @@ function App() {
                         fd.append('userName', user);
                         fd.append('autoLocation', 'true');
                         fd.append('image', selectedFile);
-                        // Send live GPS if we have it
-                        if (gpsCoords) {
+                        // Send live GPS ONLY if it's a camera capture
+                        if (isCameraCapture && gpsCoords) {
                           fd.append('lat', gpsCoords.lat);
                           fd.append('lng', gpsCoords.lng);
                         }
