@@ -116,7 +116,11 @@ function App() {
     };
   }, [user]);
 
-  const handleJoin = (name) => { setUser(name); localStorage.setItem('cg_user', name); };
+  const handleJoin = (name) => {
+    const normalized = name.trim().toUpperCase();
+    setUser(normalized);
+    localStorage.setItem('cg_user', normalized);
+  };
 
   const handleMapClick = (latlng) => {
     if (!pickingMode) setSelectedIncident(null);
@@ -224,7 +228,7 @@ function App() {
           pickingMode={pickingMode} setPickingMode={setPickingMode}
           start={start} setStart={setStart} end={end} setEnd={setEnd}
           reportLat={reportCoords.lat} reportLng={reportCoords.lng}
-          incidents={incidents} healthScore={Math.max(0, 100 - incidents.length * 2)}
+          incidents={incidents} healthScore={Math.max(0, 100 - incidents.filter(i => i.status === 'Active' || i.status === 'Assigned').length * 2)}
           onSelectIncident={setSelectedIncident} onReportSubmitted={fetchIncidents}
           setReportCoords={setReportCoords} userName={user}
         />
@@ -317,7 +321,7 @@ function App() {
           {[
             { label: 'Active', val: incidents.filter(i => i.status === 'Active' || i.status === 'Assigned').length, color: 'text-red-400' },
             { label: 'Resolved', val: incidents.filter(i => i.status === 'Resolved').length, color: 'text-green-400' },
-            { label: 'Health', val: `${Math.max(0, 100 - incidents.length * 2)}%`, color: 'text-cyan-400' },
+            { label: 'Health', val: `${Math.max(0, 100 - incidents.filter(i => i.status === 'Active' || i.status === 'Assigned').length * 2)}%`, color: 'text-cyan-400' },
           ].map(s => (
             <div key={s.label} className="flex-1 bg-slate-900/80 backdrop-blur border border-slate-700/50 rounded-2xl py-2 text-center">
               <div className={`text-base font-black ${s.color}`}>{s.val}</div>

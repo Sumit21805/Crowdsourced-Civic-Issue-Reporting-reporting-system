@@ -233,11 +233,12 @@ app.patch('/api/incidents/:id/resolve', (req, res) => {
         [resolution_note || '', req.params.id], function (err) {
             if (err) return res.status(500).json({ error: err.message });
 
-            // Award points to the reporter
+            // Award points to the reporter (normalized case)
             db.get("SELECT user_name FROM reports WHERE id = ?", [req.params.id], (err2, row) => {
                 if (!err2 && row) {
-                    db.run("INSERT OR IGNORE INTO users (name, points) VALUES (?, 0)", [row.user_name]);
-                    db.run("UPDATE users SET points = points + 5 WHERE name = ?", [row.user_name]);
+                    const normalizedName = row.user_name.trim().toUpperCase();
+                    db.run("INSERT OR IGNORE INTO users (name, points) VALUES (?, 0)", [normalizedName]);
+                    db.run("UPDATE users SET points = points + 5 WHERE name = ?", [normalizedName]);
                 }
             });
 
@@ -346,8 +347,9 @@ app.post('/api/report', upload.single('image'), (req, res) => {
 
                 // Increment points if authorized
                 if (status === 'Assigned') {
-                    db.run("INSERT OR IGNORE INTO users (name, points) VALUES (?, 0)", [userName]);
-                    db.run("UPDATE users SET points = points + 10 WHERE name = ?", [userName]);
+                    const normalizedName = userName.trim().toUpperCase();
+                    db.run("INSERT OR IGNORE INTO users (name, points) VALUES (?, 0)", [normalizedName]);
+                    db.run("UPDATE users SET points = points + 10 WHERE name = ?", [normalizedName]);
 
                     // Send AI Alert immediately
                     sendAlertEmail({
