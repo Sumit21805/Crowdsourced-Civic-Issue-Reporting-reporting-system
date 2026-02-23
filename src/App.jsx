@@ -647,10 +647,10 @@ function App() {
                   )}
 
                   {/* Audit flagged items */}
-                  {incidents.filter(i => i.status === 'Audit').length > 0 && (
+                  {incidents.filter(i => (!i.lat || !i.lng) || (!i.department)).length > 0 && (
                     <div className="space-y-2 pt-2">
-                      <div className="text-[9px] text-orange-400 font-black uppercase tracking-widest">⚠️ Flagged for Audit ({incidents.filter(i => i.status === 'Audit').length})</div>
-                      {incidents.filter(i => i.status === 'Audit').slice(0, 3).map(inc => (
+                      <div className="text-[9px] text-orange-400 font-black uppercase tracking-widest">⚠️ Flagged for Audit ({incidents.filter(i => (!i.lat || !i.lng) || (!i.department)).length})</div>
+                      {incidents.filter(i => (!i.lat || !i.lng) || (!i.department)).slice(0, 3).map(inc => (
                         <div key={inc.id} onClick={() => { setSelectedIncident(inc); setActiveTab('map'); setSheetOpen(true); }}
                           className="bg-slate-800 p-3 rounded-xl border-l-4 border-l-orange-500 flex items-center gap-3 cursor-pointer active:bg-slate-700">
                           <div className="w-10 h-10 rounded-lg bg-slate-900 overflow-hidden flex-shrink-0">

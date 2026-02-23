@@ -55,7 +55,9 @@ const app = express();
 const PORT = 5000;
 
 // Database Setup
-const db = new sqlite3.Database(path.join(__dirname, 'civicsense.db'));
+const dbPath = path.join(__dirname, 'civicsense.db');
+console.log('Using database at:', dbPath);
+const db = new sqlite3.Database(dbPath);
 
 db.serialize(() => {
     // Users table for leaderboard

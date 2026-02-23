@@ -172,11 +172,11 @@ const Sidebar = ({ onFindRoute, onClearRoute, isRouting, hasRoute, pickingMode, 
                             <h2 className="text-xs font-bold uppercase tracking-widest text-orange-400 flex items-center gap-2 px-2">
                                 <Bell size={14} /> Neural Audit Logs
                             </h2>
-                            {incidents.filter(inc => !inc.lat || !inc.lng || inc.status === 'Audit').length === 0 ? (
+                            {incidents.filter(inc => (!inc.lat || !inc.lng) || (!inc.department)).length === 0 ? (
                                 <div className="text-center py-6 text-slate-600 text-xs font-bold uppercase">No Alerts Flagged</div>
                             ) : (
-                                <div className="space-y-2">
-                                    {incidents.filter(inc => !inc.lat || !inc.lng || inc.status === 'Audit').map(inc => (
+                                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-700">
+                                    {incidents.filter(inc => (!inc.lat || !inc.lng) || (!inc.department)).map(inc => (
                                         <div
                                             key={inc.id}
                                             onClick={() => onSelectIncident(inc)}
