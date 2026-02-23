@@ -312,15 +312,23 @@ app.post('/api/report', upload.single('image'), (req, res) => {
         }
 
         // Logic check
-        if (!bestDetection) {
+        if (!bestDetection && (!finalLat || !finalLng)) {
+            // No AI and No Location = Trash report, go to Audit
             status = 'Audit';
-            auditReason = 'No pothole/garbage detected by AI';
-        } else if (!finalLat || !finalLng) {
+            auditReason = 'Incomplete data: No AI match and No Location metadata';
+        } else if (!bestDetection && (finalLat && finalLng)) {
+            // No AI but HAVE Location = MANUAL ENTRY
+            status = 'Active';
+            type = 'unknown'; // User will define this manually
+            auditReason = 'AI uncertain: Manual classification required';
+        } else if (bestDetection && (!finalLat || !finalLng)) {
+            // Have AI but NO Location = Audit (can't map it)
             status = 'Audit';
-            auditReason = 'No GPS data found and Auto-Location is OFF';
-        } else if (bestDetection.confidence < 0.4) {
-            status = 'Audit';
-            auditReason = `Low confidence (${(bestDetection.confidence * 100).toFixed(1)}%)`;
+            auditReason = 'Location missing: Verify coordinates in portal';
+        } else {
+            // Have AI and HAVE Location = PERFECT
+            status = 'Active';
+            auditReason = '';
         }
 
         // Auto-assign department based on AI detection type

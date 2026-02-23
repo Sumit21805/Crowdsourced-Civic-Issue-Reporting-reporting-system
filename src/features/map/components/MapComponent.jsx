@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, Tooltip
 import 'leaflet/dist/leaflet.css';
 import { divIcon } from 'leaflet';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { AlertTriangle, Trash2, Navigation, MapPin, Layout, Activity } from 'lucide-react';
+import { AlertTriangle, Trash2, Navigation, MapPin, Layout, Activity, HelpCircle } from 'lucide-react';
 
 // Coordinates for Delhi
 const DEFAULT_CENTER = [28.6139, 77.2090];
@@ -45,10 +45,11 @@ const MapComponent = ({ routes = [], markers = [], onMapClick, onMarkerClick, se
         switch (type) {
             case 'pothole': return createCustomIcon(<AlertTriangle color="#ef4444" {...iconProps} />, isSelected, isAudit);
             case 'garbage': return createCustomIcon(<Trash2 color="#eab308" {...iconProps} />, isSelected, isAudit);
+            case 'unknown': return createCustomIcon(<HelpCircle color="#94a3b8" {...iconProps} />, isSelected, isAudit);
             case 'start': return createCustomIcon(<Navigation color="#22c55e" size={24} fill="#22c55e" />, false, false);
             case 'end': return createCustomIcon(<MapPin color="#ef4444" size={24} fill="#ef4444" />, false, false);
             case 'report': return createCustomIcon(<MapPin color="#eab308" size={24} fill="#eab308" />, false, false);
-            default: return createCustomIcon(<AlertTriangle {...iconProps} />, isSelected, isAudit);
+            default: return createCustomIcon(<HelpCircle {...iconProps} />, isSelected, isAudit);
         }
     };
 

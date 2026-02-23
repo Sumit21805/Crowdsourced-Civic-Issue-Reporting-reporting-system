@@ -42,24 +42,48 @@ def extract_gps(image_path):
     except Exception:
         return None, None
 
-def run_detection(image_path, model_path):
-    model = YOLO(model_path)
-    results = model(image_path, verbose=False)
+def run_detection(image_path, garbage_model_path, pothole_model_path):
+    # --- LAYER 1: Garbage Detection ---
+    g_model = YOLO(garbage_model_path)
+    g_results = g_model(image_path, verbose=False)
     
-    detections = []
-    for r in results:
+    best_garbage = None
+    for r in g_results:
+        if not r.boxes: continue
         for box in r.boxes:
-            cls_id = int(box.cls[0])
             conf = float(box.conf[0])
-            label = model.names[cls_id]
-            if label in ["pothole", "garbage"]:
-                detections.append({
-                    "type": label,
-                    "confidence": round(conf, 3)
-                })
+            label = g_model.names[int(box.cls[0])]
+            if label.lower() == "garbage":
+                if not best_garbage or conf > best_garbage["confidence"]:
+                    best_garbage = {"type": "garbage", "confidence": float(round(conf, 3))}
+
+    # Logic: If high-confidence garbage found, return immediately
+    if best_garbage and best_garbage["confidence"] >= 0.30:
+        lat, lng = extract_gps(image_path)
+        return {"detections": [best_garbage], "latitude": lat, "longitude": lng}
+
+    # --- LAYER 2: Pothole Detection (Fallback) ---
+    p_model = YOLO(pothole_model_path)
+    p_results = p_model(image_path, verbose=False)
     
+    best_pothole = None
+    for r in p_results:
+        if not r.boxes: continue
+        for box in r.boxes:
+            conf = float(box.conf[0])
+            label = p_model.names[int(box.cls[0])]
+            if label.lower() == "pothole":
+                if not best_pothole or conf > best_pothole["confidence"]:
+                    best_pothole = {"type": "pothole", "confidence": float(round(conf, 3))}
+
+    # Final decision matrix
+    detections = []
+    if best_pothole:
+        detections.append(best_pothole)
+    elif best_garbage:
+        detections.append(best_garbage)
+
     lat, lng = extract_gps(image_path)
-    
     return {
         "detections": detections,
         "latitude": lat,
@@ -72,10 +96,14 @@ if __name__ == "__main__":
         sys.exit(1)
     
     img_path = sys.argv[1]
-    model_path = Path(__file__).parent / "best.pt"
+    base_path = Path(__file__).parent
+    
+    # Neural Paths
+    garbage_path = base_path / "garbage.pt"
+    pothole_path = base_path / "pothole.pt"
     
     try:
-        result = run_detection(img_path, str(model_path))
+        result = run_detection(img_path, str(garbage_path), str(pothole_path))
         print(json.dumps(result))
     except Exception as e:
         print(json.dumps({"error": str(e)}))
