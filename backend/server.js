@@ -5,6 +5,51 @@ const path = require('path');
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
 const { exec } = require('child_process');
+const nodemailer = require('nodemailer');
+require('dotenv').config();
+
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
+const sendAlertEmail = (report) => {
+    const mailOptions = {
+        from: `"CivicGuard AI Alerts" <${process.env.EMAIL_USER}>`,
+        to: process.env.EMAIL_RECEIVER,
+        subject: `🚨 Hazard Alert: ${report.type.toUpperCase()} Isolated`,
+        html: `
+            <div style="font-family: Arial, sans-serif; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; color: #1e293b; max-width: 600px;">
+                <h1 style="color: #ef4444; font-size: 24px;">Hazard Detection Log</h1>
+                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+                <div style="margin-bottom: 20px;">
+                    <p><strong>Incident ID:</strong> #${report.id}</p>
+                    <p><strong>Type:</strong> ${report.type.toUpperCase()}</p>
+                    <p><strong>Status:</strong> <span style="color: #3b82f6;">${report.status}</span></p>
+                    <p><strong>AI Confidence:</strong> ${(report.confidence * 100).toFixed(1)}%</p>
+                    <p><strong>Agent Name:</strong> ${report.userName}</p>
+                </div>
+                <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <p style="margin: 0; font-size: 14px;"><strong>Location Pins:</strong></p>
+                    <p style="margin: 5px 0 0 0; color: #64748b;">${report.lat.toFixed(6)}, ${report.lng.toFixed(6)}</p>
+                    <a href="https://www.google.com/maps?q=${report.lat},${report.lng}" style="display: inline-block; margin-top: 10px; color: #3b82f6; text-decoration: none; font-size: 12px; font-weight: bold;">View on Satellite Map →</a>
+                </div>
+                <div style="text-align: center; background: #0f172a; border-radius: 8px; overflow: hidden; margin-bottom: 20px;">
+                    <img src="${process.env.API_URL}${report.imagePath}" style="max-width: 100%; display: block; margin: 0 auto;" alt="Evidence">
+                </div>
+                <p style="font-size: 11px; color: #94a3b8; text-align: center;">Neural link secure. Auto-transmitted from CivicGuard Node.</p>
+            </div>
+        `
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+        if (error) console.error("Email Error:", error);
+        else console.log("Alert Transmitted:", info.response);
+    });
+};
 
 const app = express();
 const PORT = 5000;
@@ -156,6 +201,23 @@ app.patch('/api/incidents/:id/assign', (req, res) => {
     db.run(`UPDATE reports SET status = 'Assigned', department = ?, assigned_at = CURRENT_TIMESTAMP WHERE id = ?`,
         [department, req.params.id], function (err) {
             if (err) return res.status(500).json({ error: err.message });
+
+            // Send Alert for manual assignment
+            db.get("SELECT * FROM reports WHERE id = ?", [req.params.id], (err2, row) => {
+                if (!err2 && row) {
+                    sendAlertEmail({
+                        id: row.id,
+                        type: row.type,
+                        status: row.status,
+                        confidence: row.confidence,
+                        userName: row.user_name,
+                        lat: row.lat,
+                        lng: row.lng,
+                        imagePath: row.image_path
+                    });
+                }
+            });
+
             res.json({ success: true, message: `Assigned to department: ${department}` });
         }
     );
@@ -283,6 +345,18 @@ app.post('/api/report', upload.single('image'), (req, res) => {
                 if (status === 'Assigned') {
                     db.run("INSERT OR IGNORE INTO users (name, points) VALUES (?, 0)", [userName]);
                     db.run("UPDATE users SET points = points + 10 WHERE name = ?", [userName]);
+
+                    // Send AI Alert immediately
+                    sendAlertEmail({
+                        id: this.lastID,
+                        type,
+                        status,
+                        confidence,
+                        userName,
+                        lat: finalLat,
+                        lng: finalLng,
+                        imagePath
+                    });
                 }
 
                 res.status(201).json({
