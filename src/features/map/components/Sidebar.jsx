@@ -169,8 +169,9 @@ const Sidebar = ({ onFindRoute, onClearRoute, isRouting, hasRoute, pickingMode, 
                     {tab === 'audit' && (
                         <div className="space-y-4">
                             {/* Audit Logs */}
-                            <h2 className="text-xs font-bold uppercase tracking-widest text-orange-400 flex items-center gap-2 px-2">
-                                <Bell size={14} /> Neural Audit Logs
+                            <h2 className="text-xs font-bold uppercase tracking-widest text-orange-400 flex items-center justify-between px-2">
+                                <div className="flex items-center gap-2"><Bell size={14} /> Neural Audit Logs</div>
+                                <span className="bg-orange-500/20 px-2 py-0.5 rounded-full text-[10px]">{incidents.filter(inc => (!inc.lat || !inc.lng) || (!inc.department)).length}</span>
                             </h2>
                             {incidents.filter(inc => (!inc.lat || !inc.lng) || (!inc.department)).length === 0 ? (
                                 <div className="text-center py-6 text-slate-600 text-xs font-bold uppercase">No Alerts Flagged</div>

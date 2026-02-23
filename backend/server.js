@@ -236,6 +236,7 @@ app.patch('/api/incidents/:id/resolve', (req, res) => {
             // Award points to the reporter
             db.get("SELECT user_name FROM reports WHERE id = ?", [req.params.id], (err2, row) => {
                 if (!err2 && row) {
+                    db.run("INSERT OR IGNORE INTO users (name, points) VALUES (?, 0)", [row.user_name]);
                     db.run("UPDATE users SET points = points + 5 WHERE name = ?", [row.user_name]);
                 }
             });

@@ -2,17 +2,9 @@ import { useState, useEffect } from 'react';
 import { X, MapPin, AlertTriangle, ExternalLink, Cpu, Timer, Trash2, Send, Building2, CheckCircle2, Loader2 } from 'lucide-react';
 import API_BASE from '../../../config';
 
-const IncidentDetail = ({ incident, onClose, onActionComplete }) => {
-    const [departments, setDepartments] = useState([]);
+const IncidentDetail = ({ incident, onClose, onActionComplete, departments = [] }) => {
     const [selectedDept, setSelectedDept] = useState('');
     const [assigning, setAssigning] = useState(false);
-
-    useEffect(() => {
-        fetch(`${API_BASE}/api/departments`)
-            .then(r => r.json())
-            .then(setDepartments)
-            .catch(console.error);
-    }, []);
 
     if (!incident) return null;
 
@@ -68,13 +60,16 @@ const IncidentDetail = ({ incident, onClose, onActionComplete }) => {
         Active: 'bg-blue-500 animate-pulse',
         Assigned: 'bg-amber-500 animate-pulse',
         Resolved: 'bg-green-500',
-        Audit: 'bg-orange-500',
+        Audit: 'bg-orange-500 animate-pulse',
     };
 
     const assignedDept = departments.find(d => d.id === incident.department);
 
     return (
-        <div className="absolute top-0 right-0 h-full w-80 bg-slate-900/95 backdrop-blur-md border-l border-slate-700 z-[1100] transform transition-transform duration-300 shadow-2xl flex flex-col">
+        <div
+            className="absolute top-0 right-0 h-full w-80 bg-slate-900/95 backdrop-blur-md border-l border-slate-700 z-[1100] shadow-2xl flex flex-col"
+            style={{ animation: 'slide-in-right 0.3s ease-out forwards' }}
+        >
             <div className="p-4 border-b border-slate-700 flex justify-between items-center">
                 <h2 className="font-bold text-white flex items-center gap-2">
                     <AlertTriangle size={18} className={incident.type === 'pothole' ? 'text-red-400' : incident.type === 'garbage' ? 'text-yellow-400' : 'text-blue-400'} />

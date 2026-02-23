@@ -33,8 +33,8 @@ function App() {
   const [smartFilter, setSmartFilter] = useState(true);
 
   // Mobile UI state
-  const [activeTab, setActiveTab] = useState('map');       // map | upload | route | leaderboard
-  const [sheetOpen, setSheetOpen] = useState(false);       // bottom sheet expanded
+  const [activeTab, setActiveTab] = useState(localStorage.getItem('cg_mobile_tab') || 'map');
+  const [sheetOpen, setSheetOpen] = useState(localStorage.getItem('cg_sheet_open') === 'true');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timer, setTimer] = useState(0);
   const [leaderboard, setLeaderboard] = useState([]);
@@ -54,6 +54,14 @@ function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('cg_mobile_tab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    localStorage.setItem('cg_sheet_open', sheetOpen);
+  }, [sheetOpen]);
 
   const fetchIncidents = async (autoSelectId = null) => {
     try {
@@ -145,7 +153,12 @@ function App() {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ department: selectedDept })
       });
-      if (res.ok) { fetchIncidents(); setSelectedIncident(null); setSheetOpen(false); }
+      if (res.ok) {
+        fetchIncidents();
+        fetchLeaderboard();
+        setSelectedIncident(null);
+        setSheetOpen(false);
+      }
     } catch (e) { console.error(e); }
     finally { setAssigning(false); }
   };
@@ -224,7 +237,7 @@ function App() {
             endCoord={end ? end.split(',').map(s => parseFloat(s.trim())) : null}
             reportCoord={reportCoords.lat ? [reportCoords.lat, reportCoords.lng] : null}
           />
-          <IncidentDetail incident={selectedIncident} onClose={() => setSelectedIncident(null)} onActionComplete={fetchIncidents} />
+          <IncidentDetail incident={selectedIncident} onClose={() => setSelectedIncident(null)} onActionComplete={fetchIncidents} departments={departments} />
           <div className="absolute top-4 right-4 z-[1000] flex flex-col items-end gap-2">
             <div className="bg-slate-800/90 backdrop-blur p-2 px-4 rounded-full border border-slate-700 text-white text-sm shadow-xl flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>Neural System Online
@@ -554,24 +567,14 @@ function App() {
                       <button
                         onClick={() => {
                           setIsCameraCapture(true);
-                          // Check if Secure Context (modern browsers block GPS on HTTP)
                           if (!window.isSecureContext && window.location.hostname !== 'localhost') {
                             alert("⚠️ Android Chrome blocks GPS on HTTP.\n\nWORKAROUND:\n1. Open Chrome on phone\n2. Go to chrome://flags/#unsafely-treat-insecure-origin-as-secure\n3. Add http://" + window.location.hostname + ":5176 to the box\n4. Enable and Relaunch.");
                           }
 
-                          // We already fetch in background, but a quick refresh doesn't hurt
-                          if (gpsStatus !== 'ok') {
-                            navigator.geolocation.getCurrentPosition(
-                              (pos) => {
-                                setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                                setGpsStatus('ok');
-                              },
-                              null,
-                              { enableHighAccuracy: true, timeout: 3000 }
-                            );
-                          }
-                          // Open camera
-                          cameraRef.current?.click();
+                          // Use background tracker, avoid clashing requests
+                          setTimeout(() => {
+                            cameraRef.current?.click();
+                          }, 300);
                         }}
                         className="flex flex-col items-center gap-3 bg-blue-600/20 border-2 border-blue-500/50 rounded-2xl py-8 text-blue-400 font-black active:scale-95 transition-transform">
                         <div className="p-4 bg-blue-600/30 rounded-full">
@@ -634,6 +637,7 @@ function App() {
                             alert(msg);
                             setSelectedFile(null); setGpsCoords(null); setGpsStatus('idle');
                             fetchIncidents(d.id);
+                            fetchLeaderboard();
                             if (d.status !== 'Audit') { setSheetOpen(false); setActiveTab('map'); }
                           } else { alert(`Error: ${d.error}`); }
                         } catch { alert('Connection failed. Is the server running?'); }

@@ -65,6 +65,30 @@
   border-width: 3px !important;
 }
 
+/* Audit Pulse for unverified hazards */
+@keyframes audit-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.6);
+    border-color: #f97316;
+  }
+
+  70% {
+    box-shadow: 0 0 0 15px rgba(249, 115, 22, 0);
+    border-color: #f97316;
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0);
+    border-color: #f97316;
+  }
+}
+
+.audit-pulse {
+  animation: audit-pulse 2s infinite ease-out;
+  border-color: #f97316 !important;
+  border-width: 2px !important;
+}
+
 /* Sparkle animation for new reports */
 @keyframes sparkle {
   0% {
