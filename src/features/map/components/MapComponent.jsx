@@ -133,25 +133,15 @@ const MapComponent = ({ routes = [], markers = [], onMapClick, onMarkerClick, se
             </MapContainer>
 
             {/* Legend — desktop: bottom-right expanded. mobile: top-right mini pill */}
-            {/* Scanning Overlay (only visible when markers are empty) */}
-            {markers.length === 0 && (
-                <div className="absolute inset-0 z-[1001] bg-slate-900/40 backdrop-blur-[2px] pointer-events-none flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="relative">
-                            <div className="w-16 h-16 rounded-full border-2 border-cyan-500/30 animate-ping"></div>
-                            <Activity className="absolute inset-0 m-auto text-cyan-400 animate-pulse" size={32} />
-                        </div>
-                        <div className="text-cyan-400 font-black text-xs uppercase tracking-[0.3em] animate-pulse">Neural Scanning Area...</div>
-                    </div>
-                </div>
-            )}
+
 
             {/* Legend — desktop: bottom-right expanded. mobile: top-right mini pill */}
             <div className="hidden md:block absolute bottom-6 right-6 z-[1000] bg-slate-900/90 backdrop-blur p-4 rounded-lg border border-slate-700 shadow-xl text-white text-xs min-w-[150px]">
                 <h4 className="font-bold mb-3 uppercase tracking-tighter text-slate-400">Legend</h4>
                 <div className="space-y-2">
                     <div className="flex items-center gap-2"><AlertTriangle size={14} className="text-red-400" /><span>Potholes</span></div>
-                    <div className="flex items-center gap-2"><Trash2 size={14} className="text-yellow-400" /><span>Garbage</span></div>
+                    <div className="flex items-center gap-2"><Trash2 size={14} className="text-yellow-400" /><span>Garbage Cluster</span></div>
+                    <div className="flex items-center gap-2"><HelpCircle size={14} className="text-slate-400" /><span>Audit / Unclassified</span></div>
                     <hr className="border-slate-700 my-2" />
                     <div className="flex items-center gap-2"><div className="w-4 h-1 bg-green-500 rounded"></div><span>Safest Route</span></div>
                     <div className="flex items-center gap-2"><div className="w-4 h-1 border-t-2 border-dashed border-blue-500"></div><span>Fastest Route</span></div>
@@ -167,6 +157,10 @@ const MapComponent = ({ routes = [], markers = [], onMapClick, onMarkerClick, se
                 <div className="bg-slate-900/80 backdrop-blur px-2 py-1 rounded-full border border-slate-700/50 flex items-center gap-1.5">
                     <Trash2 size={10} className="text-yellow-400" />
                     <span className="text-white text-[9px] font-bold">Garbage</span>
+                </div>
+                <div className="bg-slate-900/80 backdrop-blur px-2 py-1 rounded-full border border-slate-700/50 flex items-center gap-1.5">
+                    <HelpCircle size={10} className="text-slate-400" />
+                    <span className="text-white text-[9px] font-bold">Audit</span>
                 </div>
                 <div className="bg-slate-900/80 backdrop-blur px-2 py-1 rounded-full border border-slate-700/50 flex items-center gap-1.5">
                     <div className="w-3 h-0.5 bg-green-500 rounded"></div>

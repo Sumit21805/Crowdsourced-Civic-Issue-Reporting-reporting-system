@@ -17,6 +17,9 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendAlertEmail = (report) => {
+    const imageFileName = path.basename(report.imagePath);
+    const imageFullPath = path.join(__dirname, 'uploads', imageFileName);
+
     const mailOptions = {
         from: `"CivicGuard AI Alerts" <${process.env.EMAIL_USER}>`,
         to: process.env.EMAIL_RECEIVER,
@@ -38,11 +41,16 @@ const sendAlertEmail = (report) => {
                     <a href="https://www.google.com/maps?q=${report.lat},${report.lng}" style="display: inline-block; margin-top: 10px; color: #3b82f6; text-decoration: none; font-size: 12px; font-weight: bold;">View on Satellite Map →</a>
                 </div>
                 <div style="text-align: center; background: #0f172a; border-radius: 8px; overflow: hidden; margin-bottom: 20px;">
-                    <img src="${process.env.API_URL}${report.imagePath}" style="max-width: 100%; display: block; margin: 0 auto;" alt="Evidence">
+                    <img src="cid:evidence-image" style="max-width: 100%; display: block; margin: 0 auto; height: auto;" alt="Evidence">
                 </div>
                 <p style="font-size: 11px; color: #94a3b8; text-align: center;">Neural link secure. Auto-transmitted from CivicGuard Node.</p>
             </div>
-        `
+        `,
+        attachments: [{
+            filename: imageFileName,
+            path: imageFullPath,
+            cid: 'evidence-image'
+        }]
     };
 
     transporter.sendMail(mailOptions, (error, info) => {
@@ -305,28 +313,20 @@ app.post('/api/report', upload.single('image'), (req, res) => {
             console.log(`📍 Using live browser GPS: ${finalLat}, ${finalLng}`);
         }
 
-        // Priority 2: Random Delhi Coords fallback (only if no GPS at all)
-        if (!finalLat && isAutoLoc && bestDetection) {
-            finalLat = 28.5 + (Math.random() * 0.1);
-            finalLng = 77.1 + (Math.random() * 0.1);
-        }
+        // Logic check & Audit Reason Generation
+        const noLocation = !finalLat || !finalLng;
+        const noAI = !bestDetection;
 
-        // Logic check
-        if (!bestDetection && (!finalLat || !finalLng)) {
-            // No AI and No Location = Trash report, go to Audit
+        if (noAI && noLocation) {
             status = 'Audit';
-            auditReason = 'Incomplete data: No AI match and No Location metadata';
-        } else if (!bestDetection && (finalLat && finalLng)) {
-            // No AI but HAVE Location = MANUAL ENTRY
-            status = 'Active';
-            type = 'unknown'; // User will define this manually
-            auditReason = 'AI uncertain: Manual classification required';
-        } else if (bestDetection && (!finalLat || !finalLng)) {
-            // Have AI but NO Location = Audit (can't map it)
+            auditReason = 'Incomplete Data: AI detection failed AND GPS metadata is missing';
+        } else if (noAI) {
+            status = 'Active'; // Allow manual entry if we have location
+            auditReason = 'AI Uncertain: Manual classification required';
+        } else if (noLocation) {
             status = 'Audit';
-            auditReason = 'Location missing: Verify coordinates in portal';
+            auditReason = 'Location Missing: AI processed evidence but GPS data is unavailable';
         } else {
-            // Have AI and HAVE Location = PERFECT
             status = 'Active';
             auditReason = '';
         }

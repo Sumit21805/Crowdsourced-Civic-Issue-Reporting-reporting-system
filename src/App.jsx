@@ -9,11 +9,53 @@ import { Navigation, Camera, Trophy, Map, X, MapPin, ChevronUp, Loader2, AlertTr
 
 // ─── Detect Mobile ──────────────────────────────────────────────
 // ─── Detect Mobile ──────────────────────────────────────────────
+// ─── Detect Mobile ──────────────────────────────────────────────
 const isMobileDevice = () => {
   const ua = navigator.userAgent;
   const isTouch = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-  if (!isTouch) return window.innerWidth < 600; // Only super small windows on laptop get mobile UI
-  return window.innerWidth < 1024; // Tablets and phones get mobile UI
+  if (!isTouch) return window.innerWidth < 600;
+  return window.innerWidth < 1024;
+};
+
+// ─── IndexedDB Persistent Draft (Android Crash Fix) ──────────────
+const DB_NAME = 'CivicGuardDraft';
+const STORE_NAME = 'drafts';
+
+const initDB = () => new Promise((resolve, reject) => {
+  const request = indexedDB.open(DB_NAME, 1);
+  request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME);
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(request.error);
+});
+
+const saveDraft = async (file) => {
+  try {
+    const db = await initDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(file, 'current_capture');
+    return new Promise((res) => { tx.oncomplete = res; });
+  } catch (err) { console.error("Draft Save failed:", err); }
+};
+
+const getDraft = async () => {
+  try {
+    const db = await initDB();
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    return new Promise((res) => {
+      const req = store.get('current_capture');
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => res(null);
+    });
+  } catch (err) { return null; }
+};
+
+const clearDraft = async () => {
+  try {
+    const db = await initDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).delete('current_capture');
+  } catch (err) { }
 };
 
 function App() {
@@ -23,6 +65,7 @@ function App() {
   const [isRouting, setIsRouting] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [mobile, setMobile] = useState(isMobileDevice());
+  const [isCapturing, setIsCapturing] = useState(false); // Memory optimization flag
 
   // Route planning
   const [pickingMode, setPickingMode] = useState(null);
@@ -57,6 +100,12 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem('cg_mobile_tab', activeTab);
+    // Auto-release memory if entering upload tab
+    if (activeTab === 'upload') {
+      setIsCapturing(true);
+    } else {
+      setIsCapturing(false);
+    }
   }, [activeTab]);
 
   useEffect(() => {
@@ -115,6 +164,19 @@ function App() {
       if (gpsWatchRef.current) navigator.geolocation.clearWatch(gpsWatchRef.current);
     };
   }, [user]);
+
+  // Android Reload Persistence
+  useEffect(() => {
+    const recoverDraft = async () => {
+      const draft = await getDraft();
+      if (draft) {
+        setSelectedFile(draft);
+        setActiveTab('audit');
+        setSheetOpen(true);
+      }
+    };
+    recoverDraft();
+  }, []);
 
   const handleJoin = (name) => {
     const normalized = name.trim().toUpperCase();
@@ -228,20 +290,33 @@ function App() {
           pickingMode={pickingMode} setPickingMode={setPickingMode}
           start={start} setStart={setStart} end={end} setEnd={setEnd}
           reportLat={reportCoords.lat} reportLng={reportCoords.lng}
-          incidents={incidents} healthScore={Math.max(0, 100 - incidents.filter(i => i.status === 'Active' || i.status === 'Assigned').length * 2)}
+          incidents={incidents} healthScore={(100 - (incidents.filter(i => i.status === 'Active' || i.status === 'Assigned').length * 0.5)).toFixed(1)}
           onSelectIncident={setSelectedIncident} onReportSubmitted={fetchIncidents}
           setReportCoords={setReportCoords} userName={user}
         />
         <div className="flex-1 relative">
-          <MapComponent routes={routes} markers={filteredIncidents}
-            onMapClick={handleMapClick} onMarkerClick={handleMarkerClick}
-            selectedId={selectedIncident?.id}
-            center={selectedIncident?.lat ? [selectedIncident.lat, selectedIncident.lng] : mapCenter}
-            startCoord={start ? start.split(',').map(s => parseFloat(s.trim())) : null}
-            endCoord={end ? end.split(',').map(s => parseFloat(s.trim())) : null}
-            reportCoord={reportCoords.lat ? [reportCoords.lat, reportCoords.lng] : null}
-          />
-          <IncidentDetail incident={selectedIncident} onClose={() => setSelectedIncident(null)} onActionComplete={fetchIncidents} departments={departments} />
+          {/* Unmount Map on Memory Lock (isCapturing) to prevent Android Browser Kill */}
+          {!isCapturing ? (
+            <MapComponent routes={routes} markers={filteredIncidents}
+              onMapClick={handleMapClick} onMarkerClick={handleMarkerClick}
+              selectedId={selectedIncident?.id}
+              center={selectedIncident?.lat ? [selectedIncident.lat, selectedIncident.lng] : mapCenter}
+              startCoord={start ? start.split(',').map(s => parseFloat(s.trim())) : null}
+              endCoord={end ? end.split(',').map(s => parseFloat(s.trim())) : null}
+              reportCoord={reportCoords.lat ? [reportCoords.lat, reportCoords.lng] : null}
+            />
+          ) : (
+            <div className="h-full w-full bg-slate-900 flex items-center justify-center p-8 text-center">
+              <div className="space-y-4">
+                <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
+                <div className="text-slate-400 text-sm font-bold uppercase tracking-widest">Memory Guard Active</div>
+                <p className="text-slate-600 text-[10px] max-w-[200px]">Strategic Map unmounted to prioritize Camera Resources. Stability Optimized.</p>
+              </div>
+            </div>
+          )}
+          {!isCapturing && (
+            <IncidentDetail incident={selectedIncident} onClose={() => setSelectedIncident(null)} onActionComplete={fetchIncidents} departments={departments} />
+          )}
           <div className="absolute top-4 right-4 z-[1000] flex flex-col items-end gap-2">
             <div className="bg-slate-800/90 backdrop-blur p-2 px-4 rounded-full border border-slate-700 text-white text-sm shadow-xl flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>Neural System Online
@@ -273,15 +348,25 @@ function App() {
 
       {/* ── Full Screen Map ── */}
       <div className="flex-1 relative">
-        <MapComponent
-          routes={routes} markers={filteredIncidents}
-          onMapClick={handleMapClick} onMarkerClick={handleMarkerClick}
-          selectedId={selectedIncident?.id}
-          center={selectedIncident?.lat ? [selectedIncident.lat, selectedIncident.lng] : mapCenter}
-          startCoord={start ? start.split(',').map(s => parseFloat(s.trim())) : null}
-          endCoord={end ? end.split(',').map(s => parseFloat(s.trim())) : null}
-          reportCoord={null}
-        />
+        {!isCapturing ? (
+          <MapComponent
+            routes={routes} markers={filteredIncidents}
+            onMapClick={handleMapClick} onMarkerClick={handleMarkerClick}
+            selectedId={selectedIncident?.id}
+            center={selectedIncident?.lat ? [selectedIncident.lat, selectedIncident.lng] : mapCenter}
+            startCoord={start ? start.split(',').map(s => parseFloat(s.trim())) : null}
+            endCoord={end ? end.split(',').map(s => parseFloat(s.trim())) : null}
+            reportCoord={null}
+          />
+        ) : (
+          <div className="h-full w-full bg-slate-900 flex items-center justify-center">
+            <div className="space-y-3 p-8 text-center">
+              <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
+              <div className="text-slate-400 text-xs font-black uppercase tracking-widest">Stability Lock: Map Suspended</div>
+              <p className="text-slate-600 text-[9px]">Prioritizing system memory for internal camera processes.</p>
+            </div>
+          </div>
+        )}
 
         {/* ── Top Status Bar ── */}
         <div className="absolute top-0 left-0 right-0 z-[1000] flex justify-between items-center px-4 pt-4 pb-2"
@@ -574,11 +659,7 @@ function App() {
                           if (!window.isSecureContext && window.location.hostname !== 'localhost') {
                             alert("⚠️ Android Chrome blocks GPS on HTTP.\n\nWORKAROUND:\n1. Open Chrome on phone\n2. Go to chrome://flags/#unsafely-treat-insecure-origin-as-secure\n3. Add http://" + window.location.hostname + ":5176 to the box\n4. Enable and Relaunch.");
                           }
-
-                          // Use background tracker, avoid clashing requests
-                          setTimeout(() => {
-                            cameraRef.current?.click();
-                          }, 300);
+                          cameraRef.current?.click();
                         }}
                         className="flex flex-col items-center gap-3 bg-blue-600/20 border-2 border-blue-500/50 rounded-2xl py-8 text-blue-400 font-black active:scale-95 transition-transform">
                         <div className="p-4 bg-blue-600/30 rounded-full">
@@ -610,9 +691,23 @@ function App() {
 
                   {/* Hidden file inputs */}
                   <input ref={cameraRef} type="file" accept="image/*" capture="environment"
-                    className="sr-only" onChange={e => { if (e.target.files[0]) setSelectedFile(e.target.files[0]); }} />
+                    className="sr-only" onChange={e => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        setSelectedFile(file);
+                        saveDraft(file);
+                      }
+                    }} />
                   <input ref={galleryRef} type="file" accept="image/*"
-                    className="sr-only" onChange={e => { if (e.target.files[0]) { setSelectedFile(e.target.files[0]); setGpsStatus('idle'); setGpsCoords(null); } }} />
+                    className="sr-only" onChange={e => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        setSelectedFile(file);
+                        saveDraft(file);
+                        setGpsStatus('idle');
+                        setGpsCoords(null);
+                      }
+                    }} />
 
                   {/* Submit Button */}
                   {selectedFile && (
@@ -635,11 +730,13 @@ function App() {
                           const d = await res.json();
                           clearInterval(tick);
                           if (res.ok) {
+                            setIsCapturing(false); // Restore map power
                             const msg = d.status === 'Audit'
                               ? `Sent to Audit:\n${d.audit_reason}`
                               : `✅ Reported!\nDetected: ${d.type}\nProcessed in ${timer.toFixed(1)}s`;
                             alert(msg);
                             setSelectedFile(null); setGpsCoords(null); setGpsStatus('idle');
+                            clearDraft(); // Clear persistent draft after success
                             fetchIncidents(d.id);
                             fetchLeaderboard();
                             if (d.status !== 'Audit') { setSheetOpen(false); setActiveTab('map'); }
