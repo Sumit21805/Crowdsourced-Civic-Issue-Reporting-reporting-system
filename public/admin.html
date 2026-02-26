@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CivicGuard — Admin Portal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0f1e;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            border-bottom: 1px solid #334155;
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .top-bar .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .top-bar h1 {
+            font-size: 20px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .top-bar .admin-badge {
+            background: #f59e0b;
+            color: #0f172a;
+            font-size: 8px;
+            font-weight: 900;
+            padding: 3px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .live-dot {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            color: #34d399;
+            font-weight: 700;
+        }
+
+        .live-dot::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: #34d399;
+            border-radius: 50%;
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5);
+            }
+
+            50% {
+                opacity: 0.6;
+                box-shadow: 0 0 0 6px rgba(52, 211, 153, 0);
+            }
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            padding: 20px 28px;
+        }
+
+        .stat {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .stat:hover {
+            border-color: #334155;
+            transform: translateY(-2px);
+        }
+
+        .stat .num {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: -2px;
+        }
+
+        .stat .lbl {
+            font-size: 9px;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin-top: 2px;
+        }
+
+        .stat.total .num {
+            color: #60a5fa;
+        }
+
+        .stat.active .num {
+            color: #f59e0b;
+        }
+
+        .stat.resolved .num {
+            color: #34d399;
+        }
+
+        .stat.audit .num {
+            color: #f97316;
+        }
+
+        .stat.users .num {
+            color: #a78bfa;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0;
+            padding: 0 28px;
+            border-bottom: 1px solid #1f2937;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+            position: relative;
+        }
+
+        .tab-btn:hover {
+            color: #e2e8f0;
+        }
+
+        .tab-btn.active {
+            color: #f59e0b;
+            border-bottom-color: #f59e0b;
+        }
+
+        .tab-btn .count {
+            background: #1f2937;
+            color: #94a3b8;
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            margin-left: 6px;
+        }
+
+        .tab-btn.active .count {
+            background: #f59e0b;
+            color: #0f172a;
+        }
+
+        /* Content */
+        .content {
+            padding: 20px 28px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Table */
+        .table-wrapper {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #0f172a;
+        }
+
+        th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 9px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 800;
+        }
+
+        td {
+            padding: 12px 16px;
+            font-size: 12px;
+            border-top: 1px solid #1f2937;
+            vertical-align: middle;
+        }
+
+        tr:hover td {
+            background: #1a2332;
+        }
+
+        .badge-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .badge-active {
+            background: #172554;
+            color: #60a5fa;
+        }
+
+        .badge-assigned {
+            background: #451a03;
+            color: #f59e0b;
+        }
+
+        .badge-resolved {
+            background: #052e16;
+            color: #34d399;
+        }
+
+        .badge-audit {
+            background: #431407;
+            color: #f97316;
+        }
+
+        .type-tag {
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 11px;
+        }
+
+        .type-pothole {
+            color: #f87171;
+        }
+
+        .type-garbage {
+            color: #fbbf24;
+        }
+
+        .type-unknown {
+            color: #94a3b8;
+        }
+
+        .confidence {
+            font-family: monospace;
+            color: #22d3ee;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .coords {
+            font-family: monospace;
+            color: #475569;
+            font-size: 10px;
+        }
+
+        .reporter {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .avatar {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #3b82f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            color: #fff;
+            font-weight: 900;
+        }
+
+        .img-thumb {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid #1f2937;
+            cursor: pointer;
+        }
+
+        .img-thumb:hover {
+            border-color: #60a5fa;
+        }
+
+        /* Action Buttons */
+        .actions {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .act-btn {
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid #1f2937;
+            background: #0f172a;
+            color: #94a3b8;
+            font-size: 9px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .act-btn:hover {
+            border-color: #60a5fa;
+            color: #fff;
+        }
+
+        .act-btn.resolve {
+            border-color: #064e3b;
+            color: #34d399;
+        }
+
+        .act-btn.resolve:hover {
+            background: #064e3b;
+        }
+
+        .act-btn.assign {
+            border-color: #451a03;
+            color: #f59e0b;
+        }
+
+        .act-btn.assign:hover {
+            background: #451a03;
+        }
+
+        .act-btn.delete {
+            border-color: #450a0a;
+            color: #f87171;
+        }
+
+        .act-btn.delete:hover {
+            background: #450a0a;
+        }
+
+        /* Department Cards */
+        .dept-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .dept-card {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.2s;
+        }
+
+        .dept-card:hover {
+            border-color: #334155;
+        }
+
+        .dept-card .dept-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .dept-card .dept-icon {
+            font-size: 28px;
+        }
+
+        .dept-card .dept-name {
+            font-size: 14px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .dept-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .dept-stat {
+            text-align: center;
+            background: #0a0f1e;
+            padding: 12px 8px;
+            border-radius: 10px;
+        }
+
+        .dept-stat .n {
+            font-size: 22px;
+            font-weight: 900;
+        }
+
+        .dept-stat .l {
+            font-size: 8px;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        /* Leaderboard */
+        .leaderboard-list {
+            max-width: 500px;
+        }
+
+        .lb-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+
+        .lb-row:hover {
+            border-color: #334155;
+        }
+
+        .lb-rank {
+            font-size: 16px;
+            font-weight: 900;
+            width: 30px;
+            text-align: center;
+            color: #64748b;
+        }
+
+        .lb-rank.top1 {
+            color: #fbbf24;
+        }
+
+        .lb-rank.top2 {
+            color: #94a3b8;
+        }
+
+        .lb-rank.top3 {
+            color: #cd7f32;
+        }
+
+        .lb-name {
+            font-weight: 700;
+            font-size: 13px;
+            flex: 1;
+        }
+
+        .lb-points {
+            font-weight: 900;
+            font-size: 14px;
+            color: #34d399;
+            font-family: monospace;
+        }
+
+        .lb-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        /* Select Dropdown */
+        .assign-select {
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-box {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 20px;
+            padding: 32px;
+            width: 420px;
+            max-width: 90vw;
+        }
+
+        .modal-box h3 {
+            font-size: 16px;
+            font-weight: 900;
+            margin-bottom: 16px;
+            color: #fff;
+        }
+
+        .modal-input {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 12px;
+            color: #e2e8f0;
+            font-size: 12px;
+            font-family: 'Inter', sans-serif;
+            margin-bottom: 12px;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: #60a5fa;
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+
+        .modal-btn.cancel {
+            background: #334155;
+            color: #94a3b8;
+        }
+
+        .modal-btn.cancel:hover {
+            background: #475569;
+        }
+
+        .modal-btn.confirm {
+            background: #059669;
+            color: #fff;
+        }
+
+        .modal-btn.confirm:hover {
+            background: #10b981;
+        }
+
+        /* Empty */
+        .empty {
+            text-align: center;
+            padding: 60px;
+            color: #334155;
+        }
+
+        .empty .emoji {
+            font-size: 40px;
+            margin-bottom: 12px;
+        }
+
+        .empty p {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-btn {
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: 1px solid #1f2937;
+            background: #0f172a;
+            color: #64748b;
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .filter-btn:hover {
+            border-color: #334155;
+            color: #e2e8f0;
+        }
+
+        .filter-btn.active {
+            border-color: #f59e0b;
+            color: #f59e0b;
+            background: #451a03;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .stats-row .stat {
+            animation: fadeInUp 0.4s ease-out both;
+        }
+
+        .stats-row .stat:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .stats-row .stat:nth-child(2) {
+            animation-delay: 0.05s;
+        }
+
+        .stats-row .stat:nth-child(3) {
+            animation-delay: 0.1s;
+        }
+
+        .stats-row .stat:nth-child(4) {
+            animation-delay: 0.15s;
+        }
+
+        .stats-row .stat:nth-child(5) {
+            animation-delay: 0.2s;
+        }
+
+        .table-wrapper {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .dept-card {
+            animation: fadeInUp 0.4s ease-out both;
+        }
+
+        .lb-row {
+            animation: fadeInUp 0.3s ease-out both;
+        }
+
+        /* Smooth Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Row click effect */
+        tr {
+            transition: all 0.15s ease;
+        }
+
+        tr:active td {
+            background: #1e3a5f !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="top-bar">
+        <div class="brand">
+            <h1>CivicGuard</h1>
+            <span class="admin-badge">Admin</span>
+        </div>
+        <div class="live-dot">Live — Auto-Refresh 8s</div>
+    </div>
+
+    <div class="stats-row" id="statsRow">
+        <div class="stat total">
+            <div class="num" id="sTotal">-</div>
+            <div class="lbl">Total Reports</div>
+        </div>
+        <div class="stat active">
+            <div class="num" id="sActive">-</div>
+            <div class="lbl">Active / Assigned</div>
+        </div>
+        <div class="stat resolved">
+            <div class="num" id="sResolved">-</div>
+            <div class="lbl">Resolved</div>
+        </div>
+        <div class="stat audit">
+            <div class="num" id="sAudit">-</div>
+            <div class="lbl">Audit Queue</div>
+        </div>
+        <div class="stat users">
+            <div class="num" id="sUsers">-</div>
+            <div class="lbl">Field Agents</div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('reports')">All Reports <span class="count"
+                id="tabReportsCount">0</span></button>
+        <button class="tab-btn" onclick="switchTab('departments')">Departments <span class="count"
+                id="tabDeptCount">0</span></button>
+        <button class="tab-btn" onclick="switchTab('leaderboard')">Leaderboard <span class="count"
+                id="tabLbCount">0</span></button>
+    </div>
+
+    <div class="content">
+        <!-- REPORTS TAB -->
+        <div class="tab-content active" id="tab-reports">
+            <div class="filters" id="filtersBar">
+                <button class="filter-btn active" onclick="setFilter('all')">All</button>
+                <button class="filter-btn" onclick="setFilter('Active')">Active</button>
+                <button class="filter-btn" onclick="setFilter('Assigned')">Assigned</button>
+                <button class="filter-btn" onclick="setFilter('Resolved')">Resolved</button>
+                <button class="filter-btn" onclick="setFilter('Audit')">Audit</button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Image</th>
+                            <th>Type</th>
+                            <th>Confidence</th>
+                            <th>Location</th>
+                            <th>Reporter</th>
+                            <th>Department</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportsBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- DEPARTMENTS TAB -->
+        <div class="tab-content" id="tab-departments">
+            <div class="dept-grid" id="deptGrid"></div>
+        </div>
+
+        <!-- LEADERBOARD TAB -->
+        <div class="tab-content" id="tab-leaderboard">
+            <div class="leaderboard-list" id="lbList"></div>
+        </div>
+    </div>
+
+    <!-- Resolve Modal -->
+    <div class="modal-overlay" id="resolveModal">
+        <div class="modal-box">
+            <h3>✅ Resolve Report #<span id="resolveId"></span></h3>
+            <textarea class="modal-input" id="resolveNote" rows="3"
+                placeholder="Resolution note (optional)..."></textarea>
+            <div class="modal-btns">
+                <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+                <button class="modal-btn confirm" onclick="confirmResolve()">Resolve</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = `http://${window.location.hostname}:5000`;
+        let allReports = [];
+        let departments = [];
+        let leaderboard = [];
+        let currentFilter = 'all';
+        let resolveTargetId = null;
+
+        // =========== INIT ===========
+        async function init() {
+            await loadAll();
+            setInterval(loadAll, 8000);
+        }
+
+        async function loadAll() {
+            try {
+                const [rRes, dRes, lRes] = await Promise.all([
+                    fetch(`${API}/api/incidents`),
+                    fetch(`${API}/api/departments`),
+                    fetch(`${API}/api/leaderboard`)
+                ]);
+                allReports = await rRes.json();
+                departments = await dRes.json();
+                leaderboard = await lRes.json();
+                renderStats();
+                renderReports();
+                renderDepartments();
+                renderLeaderboard();
+                updateTabCounts();
+            } catch (e) { console.error('Load error:', e); }
+        }
+
+        // =========== STATS ===========
+        function animateValue(id, start, end, duration) {
+            if (start === end) return;
+            const obj = document.getElementById(id);
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start);
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        function renderStats() {
+            const oldTotal = parseInt(document.getElementById('sTotal').textContent) || 0;
+            const newTotal = allReports.length;
+            animateValue('sTotal', oldTotal, newTotal, 800);
+
+            document.getElementById('sActive').textContent = allReports.filter(r => r.status === 'Active' || r.status === 'Assigned').length;
+            document.getElementById('sResolved').textContent = allReports.filter(r => r.status === 'Resolved').length;
+            document.getElementById('sAudit').textContent = allReports.filter(r => r.status === 'Audit').length;
+            document.getElementById('sUsers').textContent = leaderboard.length;
+        }
+
+        function updateTabCounts() {
+            document.getElementById('tabReportsCount').textContent = allReports.length;
+            document.getElementById('tabDeptCount').textContent = departments.length;
+            document.getElementById('tabLbCount').textContent = leaderboard.length;
+        }
+
+        // =========== TABS ===========
+        function switchTab(name, btn = null) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + name).classList.add('active');
+
+            const targetBtn = btn || document.querySelector(`.tab-btn[onclick*="switchTab('${name}'"]`);
+            if (targetBtn) targetBtn.classList.add('active');
+        }
+
+        // =========== FILTERS ===========
+        function setFilter(f) {
+            currentFilter = f;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            renderReports();
+        }
+
+        // =========== REPORTS TABLE ===========
+        function renderReports() {
+            const filtered = currentFilter === 'all' ? allReports : allReports.filter(r => r.status === currentFilter);
+            const body = document.getElementById('reportsBody');
+
+            if (filtered.length === 0) {
+                body.innerHTML = `<tr><td colspan="10"><div class="empty"><div class="emoji">📭</div><p>No reports found</p></div></td></tr>`;
+                return;
+            }
+
+            body.innerHTML = filtered.map(r => {
+                const dept = departments.find(d => d.id === r.department);
+                const statusClass = (r.status || 'active').toLowerCase();
+                const typeClass = `type-${(r.type || 'unknown').toLowerCase()}`;
+                return `<tr>
+                    <td style="font-weight:900;color:#64748b;font-family:monospace;">#${r.id}</td>
+                    <td>${r.image_path ? `<img class="img-thumb" src="${API}${r.image_path}" onclick="window.open('${API}${r.image_path}','_blank')">` : '—'}</td>
+                    <td><span class="type-tag ${typeClass}">${r.type || '?'}</span></td>
+                    <td><span class="confidence">${r.confidence ? (r.confidence * 100).toFixed(1) + '%' : '—'}</span></td>
+                    <td><span class="coords">${r.lat ? r.lat.toFixed(4) + ', ' + r.lng.toFixed(4) : '—'}</span></td>
+                    <td><div class="reporter"><span class="avatar">${(r.user_name || '?')[0].toUpperCase()}</span>${r.user_name || '?'}</div></td>
+                    <td>${dept ? `${dept.icon} <span style="font-size:10px;font-weight:700">${dept.name}</span>` : (r.lat && r.lng ? deptSelect(r.id) : '<span style="color:#64748b;font-size:10px;">No GPS Data</span>')}</td>
+                    <td><span class="badge-status badge-${statusClass}">${r.status}</span></td>
+                    <td style="font-size:10px;color:#475569;">${r.reported_at || ''}</td>
+                    <td><div class="actions">${getActions(r)}</div></td>
+                </tr>`;
+            }).join('');
+        }
+
+        function deptSelect(reportId) {
+            return `<select class="assign-select" onchange="assignDept(${reportId}, this.value)">
+                <option value="">Assign...</option>
+                ${departments.map(d => `<option value="${d.id}">${d.icon} ${d.name}</option>`).join('')}
+            </select>`;
+        }
+
+        function getActions(r) {
+            let btns = '';
+            const hasLocation = r.lat && r.lng;
+
+            if (hasLocation && r.status === 'Assigned') {
+                btns += `<button class="act-btn resolve" onclick="openResolve(${r.id})">Resolve</button>`;
+            }
+            btns += `<button class="act-btn delete" onclick="deleteReport(${r.id})">Delete</button>`;
+            return btns;
+        }
+
+        // =========== DEPARTMENTS ===========
+        function renderDepartments() {
+            const grid = document.getElementById('deptGrid');
+            grid.innerHTML = departments.map(d => {
+                const deptReports = allReports.filter(r => r.department === d.id);
+                const pending = deptReports.filter(r => r.status === 'Assigned').length;
+                const resolved = deptReports.filter(r => r.status === 'Resolved').length;
+                return `<div class="dept-card">
+                    <div class="dept-header">
+                        <span class="dept-icon">${d.icon}</span>
+                        <span class="dept-name">${d.name}</span>
+                    </div>
+                    <div class="dept-stats">
+                        <div class="dept-stat"><div class="n" style="color:#60a5fa">${deptReports.length}</div><div class="l">Total</div></div>
+                        <div class="dept-stat"><div class="n" style="color:#f59e0b">${pending}</div><div class="l">Pending</div></div>
+                        <div class="dept-stat"><div class="n" style="color:#34d399">${resolved}</div><div class="l">Done</div></div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // =========== LEADERBOARD ===========
+        function renderLeaderboard() {
+            const list = document.getElementById('lbList');
+            if (leaderboard.length === 0) {
+                list.innerHTML = '<div class="empty"><div class="emoji">🏆</div><p>No agents yet</p></div>';
+                return;
+            }
+            list.innerHTML = leaderboard.map((u, i) => {
+                const rankClass = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
+                const medal = i === 0 ? '👑' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+                return `<div class="lb-row">
+                    <div class="lb-rank ${rankClass}">${medal}</div>
+                    <div class="reporter"><span class="avatar">${u.name[0].toUpperCase()}</span></div>
+                    <div class="lb-name">${u.name}</div>
+                    <div class="lb-points">${u.points} pts</div>
+                </div>`;
+            }).join('');
+        }
+
+        // =========== ACTIONS ===========
+        async function assignDept(reportId, deptId) {
+            if (!deptId) return;
+            try {
+                await fetch(`${API}/api/incidents/${reportId}/assign`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ department: deptId })
+                });
+                loadAll();
+            } catch (e) { console.error(e); }
+        }
+
+        function assignDeptPrompt(reportId) {
+            const dept = prompt(`Assign to which department?\n${departments.map(d => `${d.id} — ${d.icon} ${d.name}`).join('\n')}\n\nType department ID:`);
+            if (dept) assignDept(reportId, dept.trim());
+        }
+
+        function openResolve(id) {
+            resolveTargetId = id;
+            document.getElementById('resolveId').textContent = id;
+            document.getElementById('resolveNote').value = '';
+            document.getElementById('resolveModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('resolveModal').classList.remove('active');
+            resolveTargetId = null;
+        }
+
+        async function confirmResolve() {
+            if (!resolveTargetId) return;
+            const note = document.getElementById('resolveNote').value;
+            try {
+                await fetch(`${API}/api/incidents/${resolveTargetId}/resolve`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ resolution_note: note })
+                });
+                closeModal();
+                loadAll();
+            } catch (e) { console.error(e); }
+        }
+
+        async function deleteReport(id) {
+            if (!confirm(`Delete report #${id}? This cannot be undone.`)) return;
+            try {
+                await fetch(`${API}/api/incidents/${id}`, { method: 'DELETE' });
+                loadAll();
+            } catch (e) { console.error(e); }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>
