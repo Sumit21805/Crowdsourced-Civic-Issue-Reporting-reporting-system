@@ -945,7 +945,10 @@
                 return `<tr>
                     <td style="font-weight:900;color:#64748b;font-family:monospace;">#${r.id}</td>
                     <td>${r.image_path ? `<img class="img-thumb" src="${API}${r.image_path}" onclick="window.open('${API}${r.image_path}','_blank')">` : '—'}</td>
-                    <td><span class="type-tag ${typeClass}">${r.type || '?'}</span></td>
+                    <td>
+                        <span class="type-tag ${typeClass}">${r.type || '?'}</span>
+                        ${r.description ? '<div style="font-size:9px; color:#94a3b8; margin-top:4px; max-width: 150px; white-space: normal; line-height: 1.2;">📝 ' + r.description + '</div>' : ''}
+                    </td>
                     <td><span class="confidence">${r.confidence ? (r.confidence * 100).toFixed(1) + '%' : '—'}</span></td>
                     <td><span class="coords">${r.lat ? r.lat.toFixed(4) + ', ' + r.lng.toFixed(4) : '—'}</span></td>
                     <td><div class="reporter"><span class="avatar">${(r.user_name || '?')[0].toUpperCase()}</span>${r.user_name || '?'}</div></td>

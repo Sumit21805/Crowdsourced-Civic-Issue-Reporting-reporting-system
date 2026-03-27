@@ -85,11 +85,13 @@ db.serialize(() => {
         status TEXT, -- 'Active', 'Assigned', 'Resolved', 'Audit'
         audit_reason TEXT,
         image_path TEXT,
+        description TEXT,
         reported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         processing_time REAL
     )`);
 
     // Add department columns if they don't exist (safe migration)
+    db.run(`ALTER TABLE reports ADD COLUMN description TEXT DEFAULT NULL`, (err) => { });
     db.run(`ALTER TABLE reports ADD COLUMN department TEXT DEFAULT NULL`, (err) => {
         // Ignore "duplicate column" error — means it already exists
     });
@@ -275,7 +277,7 @@ app.delete('/api/incidents/:id', (req, res) => {
 // Report Processing
 app.post('/api/report', upload.single('image'), (req, res) => {
     const startTime = Date.now();
-    const { userName, autoLocation } = req.body;
+    const { userName, autoLocation, description } = req.body;
     const isAutoLoc = autoLocation === 'true' || autoLocation === true;
 
     if (!userName) return res.status(400).json({ error: "User name required" });
@@ -347,9 +349,9 @@ app.post('/api/report', upload.single('image'), (req, res) => {
         const type = bestDetection ? bestDetection.type : 'unknown';
         const confidence = bestDetection ? bestDetection.confidence : 0;
 
-        db.run(`INSERT INTO reports (user_name, type, lat, lng, confidence, status, audit_reason, image_path, processing_time, department, assigned_at) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${department ? 'CURRENT_TIMESTAMP' : 'NULL'})`,
-            [userName, type, finalLat, finalLng, confidence, status, auditReason, imagePath, processingTime, department],
+        db.run(`INSERT INTO reports (user_name, description, type, lat, lng, confidence, status, audit_reason, image_path, processing_time, department, assigned_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${department ? 'CURRENT_TIMESTAMP' : 'NULL'})`,
+            [userName, description || '', type, finalLat, finalLng, confidence, status, auditReason, imagePath, processingTime, department],
             function (err) {
                 if (err) return res.status(500).json({ error: err.message });
 
