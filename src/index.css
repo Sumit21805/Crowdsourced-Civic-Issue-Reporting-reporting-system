@@ -196,3 +196,35 @@ footer {
   z-index: 9999;
   animation: fade-in 0.15s ease-out;
 }
+
+/* Leaflet Marker Cluster Custom Premium Theme */
+.marker-cluster {
+  background-color: rgba(30, 41, 59, 0.85) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 50% !important;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.3s ease !important;
+}
+
+.marker-cluster:hover {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.8) !important;
+  transform: scale(1.1);
+}
+
+.marker-cluster div {
+  background: transparent !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  font-size: 15px !important;
+  font-family: inherit !important;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
