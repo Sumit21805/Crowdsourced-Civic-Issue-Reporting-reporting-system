@@ -101,12 +101,12 @@ function App() {
   useEffect(() => {
     localStorage.setItem('cg_mobile_tab', activeTab);
     // Auto-release memory if entering upload tab
-    if (activeTab === 'upload') {
+    if (mobile && activeTab === 'upload') {
       setIsCapturing(true);
     } else {
       setIsCapturing(false);
     }
-  }, [activeTab]);
+  }, [activeTab, mobile]);
 
   useEffect(() => {
     localStorage.setItem('cg_sheet_open', sheetOpen);
@@ -719,7 +719,9 @@ function App() {
                         const fd = new FormData();
                         fd.append('userName', user);
                         fd.append('autoLocation', 'true');
-                        fd.append('image', selectedFile);
+                        // Rebuild the file to fix Android Chrome IndexedDB blob fetch bug
+                        const freshFile = new File([selectedFile], selectedFile.name || 'capture.jpg', { type: selectedFile.type || 'image/jpeg' });
+                        fd.append('image', freshFile);
                         // Send live GPS ONLY if it's a camera capture
                         if (isCameraCapture && gpsCoords) {
                           fd.append('lat', gpsCoords.lat);
@@ -741,7 +743,7 @@ function App() {
                             fetchLeaderboard();
                             if (d.status !== 'Audit') { setSheetOpen(false); setActiveTab('map'); }
                           } else { alert(`Error: ${d.error}`); }
-                        } catch { alert('Connection failed. Is the server running?'); }
+                        } catch (err) { alert('Connection failed / Code Error: ' + err.message); }
                         finally { setIsSubmitting(false); clearInterval(tick); }
                       }}
                       className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-5 rounded-2xl font-black text-base uppercase flex items-center justify-center gap-3 active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-blue-900/30">
