@@ -709,6 +709,18 @@ function App() {
                       }
                     }} />
 
+                  {/* Additional Description */}
+                  {selectedFile && (
+                    <div className="space-y-1 mb-2">
+                        <textarea
+                            id="upload-desc"
+                            rows="2"
+                            placeholder="Add specific details (Optional)..."
+                            className="w-full bg-slate-900/80 border border-slate-700 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                        ></textarea>
+                    </div>
+                  )}
+
                   {/* Submit Button */}
                   {selectedFile && (
                     <button
@@ -719,6 +731,10 @@ function App() {
                         const fd = new FormData();
                         fd.append('userName', user);
                         fd.append('autoLocation', 'true');
+                        const descField = document.getElementById('upload-desc');
+                        if (descField && descField.value) {
+                          fd.append('description', descField.value);
+                        }
                         // Rebuild the file to fix Android Chrome IndexedDB blob fetch bug
                         const freshFile = new File([selectedFile], selectedFile.name || 'capture.jpg', { type: selectedFile.type || 'image/jpeg' });
                         fd.append('image', freshFile);

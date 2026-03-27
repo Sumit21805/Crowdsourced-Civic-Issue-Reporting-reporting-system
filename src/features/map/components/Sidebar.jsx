@@ -216,9 +216,12 @@ const Sidebar = ({ onFindRoute, onClearRoute, isRouting, hasRoute, pickingMode, 
                                     setTimer(0);
                                     const timerInterval = setInterval(() => setTimer(t => t + 0.1), 100);
 
+                                    const descriptionVal = form.description ? form.description.value : '';
+
                                     const formData = new FormData();
                                     formData.append('userName', userName);
                                     formData.append('autoLocation', 'false');
+                                    formData.append('description', descriptionVal);
                                     formData.append('image', imageFile);
 
                                     try {
@@ -258,6 +261,15 @@ const Sidebar = ({ onFindRoute, onClearRoute, isRouting, hasRoute, pickingMode, 
                                             name="image"
                                             accept=".jpg,.jpeg"
                                             className="w-full text-[10px] text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:bg-blue-600/10 file:text-blue-400 hover:file:bg-blue-600/20 transition-all cursor-pointer bg-slate-900/50 p-2 rounded-xl border border-dashed border-slate-700"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-slate-500 uppercase ml-1 font-bold tracking-widest">Description (Optional)</label>
+                                        <textarea
+                                            name="description"
+                                            rows="2"
+                                            placeholder="Add specific details..."
+                                            className="w-full bg-slate-900/50 border border-slate-700 rounded-xl p-3 text-xs text-white placeholder-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
                                         />
                                     </div>
 

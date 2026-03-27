@@ -143,6 +143,16 @@ const IncidentDetail = ({ incident, onClose, onActionComplete, departments = [] 
                     </div>
                 </div>
 
+                {/* Description - New Field */}
+                {incident.description && (
+                    <div>
+                        <label className="text-[10px] text-slate-500 uppercase tracking-widest ml-1 font-bold">Description</label>
+                        <div className="bg-blue-500/10 p-3 rounded-xl border border-blue-500/20 text-blue-100 text-xs">
+                            📝 {incident.description}
+                        </div>
+                    </div>
+                )}
+
                 {/* Reported By */}
                 <div>
                     <label className="text-[10px] text-slate-500 uppercase tracking-widest ml-1 font-bold">Reported By</label>
