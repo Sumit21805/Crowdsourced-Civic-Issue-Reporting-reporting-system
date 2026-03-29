@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, Tooltip, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'leaflet/dist/leaflet.css';
 import { divIcon } from 'leaflet';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -96,17 +97,23 @@ const MapComponent = ({ routes = [], markers = [], onMapClick, onMarkerClick, se
                     </Marker>
                 )}
 
-                {markers.filter(m => m.lat && m.lng).map(marker => (
-                    <Marker
-                        key={marker.id}
-                        position={[marker.lat, marker.lng]}
-                        icon={getIcon(marker.type, marker.id === selectedId, marker.status === 'Audit')}
-                        eventHandlers={{
-                            click: () => onMarkerClick(marker)
-                        }}
-                    >
-                    </Marker>
-                ))}
+                <MarkerClusterGroup
+                    chunkedLoading
+                    maxClusterRadius={50}
+                    showCoverageOnHover={false}
+                >
+                    {markers.filter(m => m.lat && m.lng).map(marker => (
+                        <Marker
+                            key={marker.id}
+                            position={[marker.lat, marker.lng]}
+                            icon={getIcon(marker.type, marker.id === selectedId, marker.status === 'Audit')}
+                            eventHandlers={{
+                                click: () => onMarkerClick(marker)
+                            }}
+                        >
+                        </Marker>
+                    ))}
+                </MarkerClusterGroup>
 
                 {routes.map((route, index) => (
                     <Polyline
